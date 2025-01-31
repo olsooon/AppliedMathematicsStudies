@@ -1,1 +1,0 @@
-In this project, using the Julia programming language and differential equations, we developed an application that calculates caloric needs. This tool helps users achieve their desired weight in a healthy way.
