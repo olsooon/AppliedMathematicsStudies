@@ -1,0 +1,1827 @@
+---
+title: "Sprawozdanie 1"
+author: Aleksandra Szczur (276047), Agnieszka Staszkiewicz (268791)
+format: pdf
+lang: pl
+toc: true
+---
+
+```{r}
+#| echo: false
+#| include: false
+# Importowanie potrzebnych bibliotek
+
+library(dplyr)
+library(knitr)
+library(kableExtra)
+library(ggplot2)
+library(patchwork)
+library(fmsb)
+library(flextable)
+library(reshape2)
+library(moments)
+library(tidyr)
+library(gridExtra)
+```
+
+# Wstęp
+
+### Cel pracy
+
+Na każdym etapie edukacji wyniki egzaminów stanowią istotną miarę zdobytej wiedzy. Aby osiągnąć lepsze rezultaty, uczniowie poświęcają znaczną ilość czasu na naukę. Czy jednak jedynie czas spędzony na nauce decyduje o wynikach? W niniejszym sprawozdaniu przeanalizujemy różne czynniki i zbadamy ich wpływ na wyniki egzaminów końcowych.
+
+### Opis danych
+
+Zbiór danych "Student Perfomance Factors", dostępny na platformie [Kaggle](https://www.kaggle.com/datasets/lainguyn123/student-performance-factors) , przedstawia analizę wyników egzaminów końcowych uczniów oraz czynników wpływających na ich osiągnięcia.
+
+Dane obejmują 6607 rekordów, z których każdy odnosi się do indywidualnego ucznia. Każdy rekord składa się z 20 kolumn, reprezentujących różnorodne czynniki potencjalnie oddziałujące na ostateczny wynik ucznia:
+
+-   **Hours_Studied** (Godziny nauki) - ilość godzin w tygodniu spędzonych na nauce
+
+-   **Attendace** (Frekwencja) - frekwencja ucznia wyrażona w procentach
+
+-   **Parental_Involvement** (Zaangażowanie rodziców) - poziom zaangażowania rodziców w edukację dziecka (*Low* - niski poziom , *Medium* - średni poziom , *High* - wysoki poziom)
+
+-   **Access_to_Resourses** (Dostęp do dodatkowych materiałów) - dostęp do zasobów edukacyjnych ( *Low* - niski dostęp do zasobów edukacyjnych, *Medium* - średni dostęp do zasobów edukacyjnych, *High* - wysoki dostęp do zasobów edukacyjcych)
+
+-   **Extracurricular_Activities** (Zajęcia pozalekcyjne) - uczestnictwo w zajęciach pozalekcyjnych (*Yes* - uczeń uczestniczący w zajęciach pozalekcyjnych, *No* - uczeń nieuczestniczący w zajęciach pozalekcyjnych)
+
+-   **Sleep_Hours** (Godziny snu) - średnia ilość godzin spędzona na spaniu w ciągu jednej nocy
+
+-   **Previous_Scores** (Poprzedni wynik) - wynik z poprzednich egzaminów
+
+-   **Motivation_Level** (Motywacja) - poziom motywacji ucznia (*Low* - niska motywacja, *Medium* - średnia motywacja, *High* -wysoka motywacja)
+
+-   **Internet_Access** (Dostęp do internetu) - dostęp do internetu (*Yes* - uczeń z dostępem do internetu, *No* - uczeń bez dostępu do internetu)
+
+-   **Tutoring_Sessions** (Godziny korepetycji) - ilość godzin korepetycji ucznia w ciągu miesiąca
+
+-   **Family_Income** (Dochód rodziny) - dochód rodziny ucznia (*Low* - niski dochód, *Medium* - średni dochód, *High* - wysoki dochód)
+
+-   **Teacher_Quality** (Kompetencje nauczyciela) - kompetencje nauczyciela (*Low* - niskie kompetencje, *Medium* - średnie kompetencje, *High*- wysokie kompetencje)
+
+-   **School_Type** (Typ szkoły) - szkoła, do której uczęszcza uczeń (*Public* - szkoła publiczna, *Private* - szkoła prywatna)
+
+-   **Peer_Influence** (Wpływ otoczenia) - wpływ otoczenia na ucznia (*Positive* - wpływ pozytywny, *Neutral* - wpływ neutralny, *Negative* - wpływ negatywny)
+
+-   **Psychical_Activity** (Godziny aktywności fizycznej) - średnia ilość godzin w tygodniu poświęcona aktywności fizycznej
+
+-   **Learning_Disabilities** (Dysfunckja)- dysfunkcja do uczenia się (*Yes* - uczeń z dysfunkcją, *No* - uczeń bez dysfunkcji)
+
+-   **Parental_Education_Level** (Wykształcenie rodziców)- najwyższy poziom wykształcenia rodziców (*High School* - średnie, *College* - wyższe, *Postgraduate* - studia podyplomowe)
+
+-   **Distance_From_Home** (Odległość od szkoły) - odległość szkoły od domu (*Near* - mała odległość, *Moderate* - umierkowana odległość, *Far* - duża odległość)
+
+-   **Gender** (Płeć)- płeć ucznia (*Male* - mężczyzna, *Female*- kobieta)
+
+-   **Exam_Score** (Wynik egzaminu) - wynik egzaminu końcowego
+
+### Wczytanie danych
+
+```{r}
+#| echo: false
+# Wczytanie danych z pliku csv
+
+dane_pierwotne <- read.csv('StudentPerformanceFactors.csv')
+```
+
+```{r}
+#| echo: false
+# Zamiana nazw zmiennych na język polski
+
+colnames(dane_pierwotne) <- c("Godziny nauki", "Frekwencja", "Zaangażowanie rodziców","Dostęp do dodatkowych materiałów","Zajęcia pozalekcyjne","Godziny snu","Poprzedni wynik","Motywacja","Dostęp do internetu","Godziny korepetycji","Dochód rodziny","Kompetencje nauczyciela","Typ szkoły","Wpływ otoczenia","Godziny aktywności fizycznej","Dysfunkcja","Wykształcenie rodziców","Odległość od szkoły","Płeć","Wynik egzaminu")
+```
+
+```{r}
+#| echo: false
+# Usunięcie wierszy z brakami danych
+
+dane_po_usunieciu <- dane_pierwotne[!apply(dane_pierwotne, 1, function(row) any(row == "")), ]
+```
+
+Wczytujemy dane. W celu zlikwidowania potencjalnych nieprawidłowości wynikających z braków danych, zdecydowałyśmy się na usunięcie wierszy zawierających puste komórki. Po usunięciu wierszy, w których znajdują się braki danych w naszym zbiorze pozostaje 6378 wierszy. Dodatkowo, zmieniłyśmy nazwy zmiennych z angielskich na polskie, podane w nawiasach w spisie powyżej.
+
+Poniżej przedstawiamy tabele opisującą zmienne z bazy danych, ich typy oraz możliwe wartości.
+
+```{r}
+#| echo: false
+# Wybór kolumn do zachowania 
+
+kolumny_do_zachowania <- c(
+  "Płeć", "Godziny nauki","Frekwencja","Godziny korepetycji", "Dostęp do internetu",
+  "Dostęp do dodatkowych materiałów", "Wynik egzaminu"
+)
+
+dane <- dane_po_usunieciu[kolumny_do_zachowania]
+```
+
+```{r}
+#| echo: false
+#| tbl-cap: "Tabela opisująca zmienne."
+#| tbl-width: 100%
+#| tbl-font-size: 10
+# Tworzenie tabeli opisującą zmienne
+
+# Dane
+Zmienne <- c("Godziny nauki", "Frekwencja", "Zaangażowanie rodziców","Dostęp do dodatkowych materiałów","Zajęcia pozalekcyjne","Godziny snu","Poprzedni wynik","Motywacja","Dostęp do internetu","Godziny korepetycji","Dochód rodziny","Kompetencje nauczyciela","Typ szkoły","Wpływ otoczenia","Godziny aktywności fizycznej","Dysfunkcja","Wykształcenie rodziców","Odległość od szkoły","Płeć","Wynik egzaminu")
+
+x <- c("numeric","numeric","character","character","character","numeric","numeric","character","character","numeric","character","character","character","character","numeric","character","character","character","character","numeric")
+
+y = c("[1,44]", "[60,100]", "High, Low, Medium", "High, Low, Medium", "No, Yes",  "[4,10]","[50,100]", "High, Low, Medium", "No, Yes","[0,8]", "High, Low, Medium", "High, Low, Medium", "Private, Public", "Negative, Neutral, Positive", "[0,6]", "No, Yes", "College, High School, Postgraduate", "Far, Moderate, Near", "Female, Male", "[55,101]") 
+
+tabela <- data.frame(Zmienne, Typ_danych = x, Możliwe_wartości = y)
+names(tabela)[2] <- "Typ danych"
+names(tabela)[3] <- "Możliwe wartości"
+
+# Generowanie tabeli
+if (knitr::is_latex_output()) {
+  # Format LaTeX dla PDF
+  kable(tabela, format = "latex", booktabs = TRUE, longtable = TRUE,
+        caption = "Tabela opisująca zmienne.") |>
+    kable_styling(latex_options = c("hold_position", "striped"), 
+                  font_size = 10, 
+                  full_width = FALSE)
+} else {
+  # Format HTML dla podglądu Quarto
+  kable(tabela, format = "html", caption = "Tabela opisująca zmienne.") |>
+    kable_styling(bootstrap_options = c("striped", "hover"), 
+                  full_width = TRUE, 
+                  font_size = 10)
+}
+```
+
+W naszej analizie będziemy korzystać tylko z kolumn: *Płeć, Godziny nauki, Frekwencja, Godziny korepetycji, Dostęp do internetu, Dostęp do dodatkowych materiałów, Wynik egzaminu*.
+
+### Statystyka opisowa
+
+Statystyka opisowa jest fundamentalnym zagadnieniem w statystyce, mającym na celu opisanie i zrozumienie danych za pomocą różnorodnych technik i wskaźników statystycznych. Jest to podstawowy proces, który umożliwia poznanie charakterystyki zbioru danych oraz identyfikację podstawowych cech, które są istotne dla dalszej analizy.
+
+#### Tabela statystyki opisowej
+
+W poniższej tabeli przedstawione zostały statystyki opisowe zmiennych numerycznych z naszego zbioru danych:
+
+```{r}
+#| echo: false
+#| warning: false
+#| tbl-cap: "Tabela przedstawiająca statystki opisowe zmiennych ."
+# Tworzenie tabeli przedstawiającej statystyki opisowe zmiennych numerycznych
+
+#Srednie
+srednia1 <- mean(dane_po_usunieciu$`Godziny nauki`)
+srednia2 <- mean(dane_po_usunieciu$Frekwencja)
+srednia3 <- mean(dane_po_usunieciu$`Godziny snu`)
+srednia4 <- mean(dane_po_usunieciu$`Poprzedni wynik`)
+srednia5 <- mean(dane_po_usunieciu$`Godziny korepetycji`)
+srednia6 <- mean(dane_po_usunieciu$`Godziny aktywności fizycznej`)
+srednia7 <- mean(dane_po_usunieciu$`Wynik egzaminu`)
+
+#Mediana
+mediana1 <- median(dane_po_usunieciu$`Godziny nauki`)
+mediana2 <- median(dane_po_usunieciu$Frekwencja)
+mediana3 <- median(dane_po_usunieciu$`Godziny snu`)
+mediana4 <- median(dane_po_usunieciu$`Poprzedni wynik`)
+mediana5 <- median(dane_po_usunieciu$`Godziny korepetycji`)
+mediana6 <- median(dane_po_usunieciu$`Godziny aktywności fizycznej`)
+mediana7 <- median(dane_po_usunieciu$`Wynik egzaminu`)
+
+#kwartyl 1 (Q1)
+q11 <- quantile(dane_po_usunieciu$`Godziny nauki`, probs = 0.25 )
+q12 <- quantile(dane_po_usunieciu$Frekwencja, probs = 0.25)
+q13 <- quantile(dane_po_usunieciu$`Godziny snu`, probs = 0.25)
+q14 <- quantile(dane_po_usunieciu$`Poprzedni wynik`, probs = 0.25)
+q15 <- quantile(dane_po_usunieciu$`Godziny korepetycji`, probs = 0.25)
+q16 <- quantile(dane_po_usunieciu$`Godziny aktywności fizycznej`, probs = 0.25)
+q17 <- quantile(dane_po_usunieciu$`Wynik egzaminu`, probs = 0.25)
+
+#kwartyl 3 (Q3)
+q31 <- quantile(dane_po_usunieciu$`Godziny nauki`, probs = 0.75 )
+q32 <- quantile(dane_po_usunieciu$Frekwencja, probs = 0.75)
+q33 <- quantile(dane_po_usunieciu$`Godziny snu`, probs = 0.75)
+q34 <- quantile(dane_po_usunieciu$`Poprzedni wynik`, probs = 0.75)
+q35 <- quantile(dane_po_usunieciu$`Godziny korepetycji`, probs = 0.75)
+q36 <- quantile(dane_po_usunieciu$`Godziny aktywności fizycznej`, probs = 0.75)
+q37 <- quantile(dane_po_usunieciu$`Wynik egzaminu`, probs = 0.75)
+
+#Wariancja
+wariancja1 <- var(dane_po_usunieciu$`Godziny nauki`)
+wariancja2 <- var(dane_po_usunieciu$Frekwencja)
+wariancja3 <- var(dane_po_usunieciu$`Godziny snu`)
+wariancja4 <- var(dane_po_usunieciu$`Poprzedni wynik`)
+wariancja5 <- var(dane_po_usunieciu$`Godziny korepetycji`)
+wariancja6 <- var(dane_po_usunieciu$`Godziny aktywności fizycznej`)
+wariancja7 <- var(dane_po_usunieciu$`Wynik egzaminu`)
+
+#Skośność
+skosnosc1 <- skewness(dane_po_usunieciu$`Godziny nauki`)
+skosnosc2 <- skewness(dane_po_usunieciu$Frekwencja)
+skosnosc3 <- skewness(dane_po_usunieciu$`Godziny snu`)
+skosnosc4 <- skewness(dane_po_usunieciu$`Poprzedni wynik`)
+skosnosc5 <- skewness(dane_po_usunieciu$`Godziny korepetycji`)
+skosnosc6 <- skewness(dane_po_usunieciu$`Godziny aktywności fizycznej`)
+skosnosc7 <- skewness(dane_po_usunieciu$`Wynik egzaminu`)
+
+#Kurtoza
+kurtoza1 <- kurtosis(dane_po_usunieciu$`Godziny nauki`)
+kurtoza2 <- kurtosis(dane_po_usunieciu$Frekwencja)
+kurtoza3 <- kurtosis(dane_po_usunieciu$`Godziny snu`)
+kurtoza4 <- kurtosis(dane_po_usunieciu$`Poprzedni wynik`)
+kurtoza5 <- kurtosis(dane_po_usunieciu$`Godziny korepetycji`)
+kurtoza6 <- kurtosis(dane_po_usunieciu$`Godziny aktywności fizycznej`)
+kurtoza7 <- kurtosis(dane_po_usunieciu$`Wynik egzaminu`)
+
+#Współczynnik zmienności
+wsp_zmiennosci1 <- sd(dane_po_usunieciu$`Godziny nauki`) / mean(dane_po_usunieciu$`Godziny nauki`)
+wsp_zmiennosci2 <- sd(dane_po_usunieciu$Frekwencja) / mean(dane_po_usunieciu$Frekwencja)
+wsp_zmiennosci3 <- sd(dane_po_usunieciu$`Godziny snu`) / mean(dane_po_usunieciu$`Godziny snu`)
+wsp_zmiennosci4 <- sd(dane_po_usunieciu$`Poprzedni wynik`) / mean(dane_po_usunieciu$`Poprzedni wynik`)
+wsp_zmiennosci5 <- sd(dane_po_usunieciu$`Godziny korepetycji`) / mean(dane_po_usunieciu$`Godziny korepetycji`)
+wsp_zmiennosci6 <- sd(dane_po_usunieciu$`Godziny aktywności fizycznej`) / mean(dane_po_usunieciu$`Godziny aktywności fizycznej`)
+wsp_zmiennosci7 <- sd(dane_po_usunieciu$`Wynik egzaminu`) / mean(dane_po_usunieciu$`Wynik egzaminu`)
+
+#Zmienne statystyczne
+zmienne_stat_opis_ft <- c("Godziny nauki","Frekwencja", "Godziny snu", "Poprzedni wynik","Godziny korepetycji", "Godziny aktywności fizycznej", "Wynik egzaminu")
+min_stat_opis_ft <- c(1,60,4,50,0,0,55)
+max_stat_opis_ft <- c(44,100,10,100,8,6,101)
+srednia_stat_opis_ft <- c(srednia1,srednia2,srednia3,srednia4,srednia5,srednia6,srednia7 )
+mediana_stat_opis_ft <- c(mediana1, mediana2, mediana3, mediana4, mediana5, mediana6, mediana7)
+q1_stat_opis_ft <- c(q11, q12, q13, q14, q15, q16, q17)
+q3_stat_opis_ft <- c(q31, q32, q33, q34, q35, q36, q37)
+wariancja_stat_opis_ft <- c(wariancja1, wariancja2, wariancja3, wariancja4, wariancja5, wariancja6, wariancja7)
+skosnosc_stat_opis_ft <- c(skosnosc1, skosnosc2, skosnosc3, skosnosc4, skosnosc5, skosnosc6, skosnosc7)
+kurtoza_stat_opis_ft <- c(kurtoza1, kurtoza2, kurtoza3, kurtoza4, kurtoza5, kurtoza6, kurtoza7)
+wsp_zmiennosci_stat_opis_ft <- c(wsp_zmiennosci1, wsp_zmiennosci2, wsp_zmiennosci3, wsp_zmiennosci4, wsp_zmiennosci5, wsp_zmiennosci6, wsp_zmiennosci7)
+
+stat_opis_tabela <- data.frame(zmienne_stat_opis_ft,min_stat_opis_ft,max_stat_opis_ft, srednia_stat_opis_ft, mediana_stat_opis_ft, q1_stat_opis_ft, q3_stat_opis_ft, wariancja_stat_opis_ft, skosnosc_stat_opis_ft, kurtoza_stat_opis_ft, wsp_zmiennosci_stat_opis_ft)
+
+#Zaokrąglanie do 3 miejsce po przecinku
+stat_opis_tabela <- data.frame(
+  Zmienna = zmienne_stat_opis_ft,
+  Min = round(min_stat_opis_ft, 3),
+  Max = round(max_stat_opis_ft, 3),
+  Średnia = round(srednia_stat_opis_ft, 3),
+  Mediana = round(mediana_stat_opis_ft, 3),
+  `Q1 - kwartyl 1` = round(q1_stat_opis_ft, 3),
+  `Q3 - kwartyl 3` = round(q3_stat_opis_ft, 3),
+  Wariancja = round(wariancja_stat_opis_ft, 3),
+  Skośność = round(skosnosc_stat_opis_ft, 3),
+  Kurtoza = round(kurtoza_stat_opis_ft, 3),
+  `Współczynnik zmienności` = round(wsp_zmiennosci_stat_opis_ft, 3)
+)
+
+names(stat_opis_tabela)[1] <- "Zmienna"
+names(stat_opis_tabela)[2] <- "Min"
+names(stat_opis_tabela)[3] <- "Max"
+names(stat_opis_tabela)[4] <- "Średnia"
+names(stat_opis_tabela)[5] <- "Mediana"
+names(stat_opis_tabela)[6] <- "Q1 - kwartyl 1"
+names(stat_opis_tabela)[7] <- "Q3 - kwartyl 3"
+names(stat_opis_tabela)[8] <- "Wariancja"
+names(stat_opis_tabela)[9] <- "Skośność"
+names(stat_opis_tabela)[10] <- "Kurtoza"
+names(stat_opis_tabela)[11] <- "Współczynnik zmienności"
+
+# Generowanie tabeli z dynamicznym formatem
+if (knitr::is_latex_output()) {
+  # Format LaTeX dla PDF
+  kable(
+    stat_opis_tabela,
+    format = "latex",
+    booktabs = TRUE,
+    longtable = TRUE,
+    caption = "Tabela przedstawiająca statystyki opisowe zmiennych.",
+    align = c("l", rep("c", 10)) # Wyrównanie kolumn
+  ) |>
+    kable_styling(
+      latex_options = c("hold_position", "striped", "scale_down"), # Skaluje tabelę automatycznie
+      font_size = 7                                               # Zmniejszenie czcionki
+    ) |>
+    # Ustawienie r
+    column_spec(1, latex_column_spec = "p{2cm}") |>           # Ustawienie pierwszej kolumny na 3 cm
+    column_spec(2, latex_column_spec = "p{0.5cm}") |>
+    column_spec(3, latex_column_spec = "p{0.5cm}") |>
+    column_spec(4:11, latex_column_spec = "p{1cm}")              # Ustawienie pozostałych kolumn na 2 cm
+}else {
+  # Format HTML dla podglądu Quarto
+  kable(
+    stat_opis_tabela,
+    format = "html",
+    caption = "Tabela przedstawiająca statystyki opisowe zmiennych."
+  ) |>
+    kable_styling(
+      bootstrap_options = c("striped", "hover"),
+      full_width = FALSE,
+      font_size = 10
+    ) |>
+    column_spec(1, width = "3cm") |>  # Szerokość kolumny Zmienna
+    column_spec(2:11, width = "2cm") # Szerokość pozostałych kolumn
+}
+```
+
+Z tabeli możemy wyczytać:
+
+**Min** - minimalna wartość zmiennej.
+
+**Max** - maksymalna wartość zmiennej.
+
+**Średnia** - średnia arytmetyczna wszystkich wartości zmiennej. Średnia arytmetyczna $\bar{x}$ jest miarą centralnej tendencji, która oblicza się jako suma wszystkich wartości zmiennej $x_i$, dla badanej zbiorowości, podzielona przez liczbę jednostek tej zbiorowości $(n)$.
+
+**Mediana** - służy do określania wartości centralnej w uporządkowanym zbiorze danych.
+
+**Kwartyl 1**- punkt, który dzieli najmniejszą część zbioru danych na $25\%$ najniższych wartości. Kwartyl pierwszy jest medianą dolnej połowy próby. Jest to wartość, poniżej której znajduje sie $25\%$ obserwacji.
+
+**Kwartyl 3** - punkt, który dzieli największą część zbioru danych na $25\%$ najwyższych wartości. Kwartyl trzeci jest medianą górnej połowy próby. Jest to wartość powyżej której znajduje się $75\%$ obserwacji.
+
+**Wariancja** - miara rozproszenia wartości w zbiorze danych, która określa, jak bardzo te wartości różnią się od średniej arytmetycznej. Im większa wariancja, tym bardziej zróżnicowane są wartości.
+
+**Skośność** - miara asymetrii obserwacji, informująca o tym jak wyniki dla danej zmiennej kształtują się wokół średniej ($\boldsymbol{\alpha}$ **\> 0** - asymetria dodatnia i rozkład jest prowostronnie skośny, $\boldsymbol{\alpha}$ **\< 0** - asymetria ujemna i rozkład jest lewostronnie skośny, $\boldsymbol{\alpha}$ **= 0** - rozkład symetryczny)
+
+**Kurtoza** - miara spłaszczenia, która informuje o koncentracji rozkładu (**K \> 3** - rozkład ciężkoogonowy, **K \< 3** - rozkład lekkoogonowy, **K = 3** - kurtoza rozkładu normalnego).
+
+**Współczynnik zmienności** - miara rozproszenia danych, która pozwala porównywać zmienność między różnymi zbiorami danych o różnych średnich wartościach. Określa stosunek odchylenia standardowego do średniej arytmetycznej danych ( $V \in [0, 0.2)$ - zmienność mała, $V \in [0.2, 0.4)$ - zmienność przeciętna, $V \in [0.4, 1)$ - zmienność duża, $V \in [1, 1.5)$ - zmienność bardzo duża, $V \in [1.5, \infty)$ - zmienność skrajnie duża).
+
+Na podstawie tabeli możemy wyciągnąć wnioski dla zmiennych używanych przez nas w sprawozdaniu
+
+-   Średnia arytmetyczna i mediana liczby godzin nauki są do siebie zbliżone, co oznacza, że rozkład zmiennej jest w miarę symetryczny. Wysoka wartość wariancji świadczy o dużej rozpiętości danych, a współczynnik zmienności $0.3$ oznacza zmienność przeciętną w liczbie godzin nauki. Dodatkowo, skośność i kurtoza wskazują, że rozkład jest zbliżony do normalnego.
+
+-   Podobnie, zbliżone wartości średniej i mediany frekwencji świadczą o równomiernym rozkładzie wokół średniej. Mimo wysokiej wariancji, która sugeruje dużą zmienność danych, współczynnik zmienności wskazuje na niewielkie odchylenie w proporcji do średniej. Skośność i kurtoza natomiast pokazują, że rozkład jest bardziej spłaszczony niż normalny.
+
+-   W przypadku godzin korepetycji zarówno średnia jak i mediana sugerują, że wartości są silniej skupione wokół niższych przedziałów. Ujemna skośność wskazuje na asymetrię ujemną, a kurtoza większa od $3$ na rozkład ciężkoogonowy. Dane charekteryzują się przy tym duża zmiennością.
+
+-   Wyniki egzaminów wykazują symetryczny rozkład, co wynika z podobieństwa wartości średniej i mediany. Wariancja wskazuje na stosunkowo jednorodne wyniki, a niski współczynnik zmienności potwierdza niewielkie różnice między nimi. Dodatkowo, skośność sugeruje, że rozkład jest lekko przesunięty w stronę wyższych wyników, a bardzo wysoka kurtoza na wyraźne skupienie wartości blisko mediany.
+
+#### Wykresy pudełkowe
+
+Wykres pudełkowy pozwala szybko zobaczyć rozkład danych, wykryć wartości odstające i porównać rozkłady między grupami. Składa się z pudełka oraz dwóch, tak zwanych, "wąsów". Z wykresu pudełkowego możemy odczytać:
+
+-   medianę - linia wewnątrz pudełka,
+
+-   kwartyl pierwszy ($Q1$) - dolna granica pudełka,
+
+-   kwartyl trzeci ($Q3$) - górna granica pudełka,
+
+-   rozstęp międzykwartylowy ($IQR$) - wysokość pudełka (różnica między $Q3$ a $Q1$),
+
+-   zakres wartości - wąsy wyChodzące z pudełka,
+
+-   wartości odstające - punkty nad i pod pudełkiem. Wartości odstające to wartości większe od $Q3 +1.5IQR$ lub mniejsze od $Q1 - 1.5IQR$
+
+Poniżej przedstawiono wykresy pudełkowe dla zmiennych ilościowych z naszych danych:
+
+```{r}
+#| echo: false
+# Tworzenie wykresów pudełkowych dla zmiennych ilościowych (dla pierwszych czterech zmiennych)
+
+# Przekształcenie danych 
+dane_long <- dane_po_usunieciu |>
+  pivot_longer(
+    cols = c(`Godziny nauki`, Frekwencja, `Godziny snu`, `Poprzedni wynik`),
+    names_to = "Zmienna",
+    values_to = "Wartosc"
+  )
+
+# Wykres pudełkowy 
+ggplot(dane_long, aes(x = "", y = Wartosc)) +
+  geom_boxplot(
+    outlier.color = "black",        
+    outlier.shape = 21,            
+    outlier.fill = "white",        
+    outlier.size = 3,              
+    fill = "#BFD3E6",              
+    color = "black",               
+    width = 0.2                    
+  ) +
+  facet_wrap(~Zmienna, scales = "free_y", ncol = 2) +  
+  labs(
+    title = "Wykresy pudełkowe dla zmiennych ilościowych",
+    x = "", 
+    y = "Wartość"
+  ) +
+  theme_minimal() + theme(
+    plot.title = element_text(size = 12)
+  )
+
+```
+
+```{r}
+#| echo: false
+#| fig-cap: "Wykresy pudełkowe dla zmiennych ilościowych."
+# Tworzenie wykresów pudełkowych dla zmiennych ilościowych (dla ostatnich trzech zmiennych)
+
+# Przekształcenie danych 
+dane_long <- dane_po_usunieciu |>
+  pivot_longer(
+    cols = c(`Godziny korepetycji`, `Godziny aktywności fizycznej`, `Wynik egzaminu`),
+    names_to = "Zmienna",
+    values_to = "Wartosc"
+  )
+
+# Wykres pudełkowy 
+ggplot(dane_long, aes(x = "", y = Wartosc)) +
+  geom_boxplot(
+    outlier.color = "black",        
+    outlier.shape = 21,            
+    outlier.fill = "white",        
+    outlier.size = 3,              
+    fill = "#BFD3E6",              
+    color = "black",               
+    width = 0.2                    
+  ) +
+  facet_wrap(~Zmienna, scales = "free_y", ncol = 2) +  
+  labs(
+    x = "",  
+    y = "Wartość"
+  ) +
+  theme_minimal() +theme(
+    plot.title = element_text(size = 12)
+  )
+```
+
+Wykresy pudełkowe w czytelny sposób ilustrują wartości obliczone w tabeli statystyk opisowych, potwierdzając ich poprawność. Dodatkowo umożliwiają łatwe zidentyfikowanie danych, w których występują wartości odstające.
+
+#### Macierz korelacji
+
+Korelacja Pearsona to miara związku pomiędzy dwiema zmiennymi. Korelacja to inaczej unormowana kowariancja. Wartość kowariancji to liczba z przedziału $\ [-1,1]$ ( $\rho = -1$ - silna korelacja ujemna, $\rho = 1$ - silna korelacja dodatnia, $\rho = 0$ - brak korelacji).
+
+Poniżej przedstawiona jest macierz korelacji zmiennych ilościowych z naszych danych. Patrząc na wyliczone wartości będziemy w stanie odczytać korelację między każdym czynnikiem ilościowym wpływającym na wynik egzaminu końcowego.
+
+```{r}
+#| echo: false
+#| fig.width: 6
+#| fig.height: 3.5
+#| fig.align: center
+#| fig-cap: "Macierz korelacji dla zmiennych ilościowych."
+# Tworzenie macierzy korelacji dla zmiennych ilościowych
+
+kolumny_numeryczne <- c("Godziny nauki", "Frekwencja", "Godziny snu", 
+                        "Poprzedni wynik", "Godziny korepetycji", 
+                        "Godziny aktywności fizycznej", "Wynik egzaminu")
+
+df <- dane_po_usunieciu[, kolumny_numeryczne]
+
+# Obliczanie macierzy korelacji
+cor_matrix <- cor(df)
+
+cor_long <- melt(cor_matrix)
+
+# Wizualizacja macierzy korelacji
+ggplot(cor_long, aes(x = Var1, y = Var2, fill = value)) +
+  geom_tile() +
+  geom_tile(color = "black") +   
+  geom_text(aes(label = round(value, 2)), color = "white") +  
+   scale_fill_gradient2(
+    high = "#08306B",  
+    mid = "#BFD3E6", 
+    low = "#DEEBF7", 
+    midpoint = 0,     
+    limits = c(-1, 1), 
+    name = "Korelacja" 
+  )  +
+  scale_x_discrete(limits = kolumny_numeryczne, position = "top") +  
+  scale_y_discrete(limits = rev(kolumny_numeryczne)) +  
+  labs(x = "", y = "") +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 0, vjust = 1),  
+    axis.text.y = element_text(hjust = 1),
+    plot.title = element_text(size = 12)
+  )
+```
+
+Z wykresu wynika, że największe wartości korelacji mają zależności wyniku końcowego egzaminu do godzin poświeconym nauce oraz do obecności na zajęciach i wynoszą kolejno: $0.45$, $0.58$. Korelacje te są dodatnie, co oznacza, że im wiecej się uczymy lub uczęszczamy na zajęcia - tym większy wynik egzaminu możemy osiągnąć. Co zaskakujące, korelacja w przypadku zależności *Wynik egzaminu* do *Frekwencja* jest wyższa od korelacji *Wynik egzaminu* do *Godziny nauki*. Oznacza to, że większy wpływ na lepszy wynik egzaminu ma obecność na zajęciach, a nie ilość poświęconych na naukę godzin.
+
+### Pytania badawcze
+
+W naszym sprawozdaniu skupimy się na trzech pytaniach badawczych:
+
+1.  Jak ilość godzin spędzonych na nauce wpływa na wynik egzaminu końcowego?
+2.  Jak obecność na zajęciach wpływa na wynik egzaminu końcowego?
+3.  Jak dodatkowe wsparcie edukacyjne wpływa na wynik egzaminu?
+
+# Analiza danych
+
+### Jak ilość godzin spędzonych na nauce wpływa na wynik egzaminu końcowego?
+
+Z analizy macierzy koreleacji wiemy już, że spośród wszystkich zmiennych ilościowych, liczba godzin poświęconych na naukę ma jedno z największych oddziaływań na wynik egzaminu końcowego. Przyjrzyjmy się temu, jak znaczące są te różnice.
+
+W pierwszej kolejności przyjrzyjmy się liczbie uczniów osiągających dany wynik na egzaminie w zależności od liczby godzin poświęconych na naukę. Godziny nauki zostały podzielone na osiem kategorii: $[0,5), [5, 10), [10, 15), [15, 20), [20, 25), [25, 30), [30, 35)$ oraz $[35, \infty)$.
+
+```{r}
+#| echo: false
+#| fig.align: center
+#| fig-cap: "Histogram wyników egzaminu w zależności od godzin nauki."
+# Tworzenie histogramu wyników egzaminu w zależności od godzin nauki
+
+# Ustawienie palety kolorów
+kolory_godziny_nauki <- c(
+  "0-5" = "#ff6666",
+  "5-10" = "#D7AA35",
+  "10-15" = "#9BBF3E",
+  "15-20" = "#33C885",
+  "20-25" = "#4DD2D6",
+  "25-30" = "#009EEA",
+  "30-35" = "#C679FF",
+  "35+" = "#FF75D2"
+)
+
+# Tworzenie kategorii godzin nauki
+dane$Godziny_nauki_Category <- cut(
+  dane$`Godziny nauki`,
+  breaks = c(0, 5, 10, 15, 20, 25, 30, 35, Inf),
+  labels = c("0-5", "5-10", "10-15", "15-20", "20-25", "25-30", "30-35", "35+"),
+  right = FALSE
+)
+
+# Histogram
+ggplot(dane, aes(x = `Wynik egzaminu`, fill = Godziny_nauki_Category)) +
+  geom_histogram(binwidth = 1, alpha = 0.7, position = "stack", color = "black") +
+  scale_fill_manual(values = kolory_godziny_nauki)+
+  labs(
+    title = "Histogram wyników egzaminu w zależności od godzin nauki",
+    x = "Wynik egzaminu",
+    y = "Liczba uczniów",
+    fill = "Kategorie godzin nauki"
+  ) +
+  theme_minimal() +theme(
+    plot.title = element_text(size = 12)
+  )
+```
+
+Największe skupienie w przedziale $[60,70]$ świadczy o tym, że większość uczniów uzyskuje właśnie takie wyniki. Zgadza się to z wyliczoną w tabeli statystyki opisowej średnią zmiennej *Wynik egzaminu* wynoszącą 67.252 i medianą wynoszącą 67. Rozkład jest prawostronnie skośny i wyraźnie skupiony wokół mediany, co potwierdza skośność i kurtozę.
+
+Słupki podzielone są według kategorii godzin spędzonych na nauce. Widać, że te kategorie faktycznie przyczyniają się do rozkładu wyniku z egzaminu. Uczniowie z niższych kategorii osiągają głównie niższe wyniki, co widać po większym ich skupieniu po lewej stronie. Uczniowie, którzy natomiast spędzili więcej czasu na nauce uzyskują wyniki wyższe, co potwierdza pojawienie się kategorii $[30,\infty)$ dopiero po prawej stronie rozkładu.
+
+Możemy stwierdzić, że kategorie $[15,25)$ najlepiej reprezentują uczniów uzyskujących wyniki zbliżone do średniej.
+
+Dla lepszego zauważenia tych tendencji skupmy się na histogramach wartości odstających. Wartości odstające przyjęłyśmy na podstawie wykresu pudełkowego zmiennej *Wynik egzaminu.*
+
+```{r}
+#| echo: false
+#| fig-cap: "Histogram wyników (55-60) w zależności od godzin nauki."
+# Tworzenie histogramu dla  wyników (55-60) w zależności od godzin nauki
+
+wyniki_niskie_nauka <- dane |>
+  filter(`Wynik egzaminu` <= 60)
+
+# Histogram dla wyników od 55 do 60
+plot_55_60_nauka <- ggplot(wyniki_niskie_nauka, aes(x = `Wynik egzaminu`, fill = Godziny_nauki_Category)) +
+  geom_histogram(binwidth = 1, alpha = 0.7, position = "stack", boundary = 55, color = "black") + 
+  scale_fill_manual(values = kolory_godziny_nauki)+
+  labs(
+    title = "Histogram wyników (55-60) w zależności od godzin nauki",
+    x = "Wynik egzaminu",
+    y = "Liczba uczniów",
+    fill = "Kategorie godzin nauki"
+  ) +
+  theme_minimal() +
+  scale_x_continuous(breaks = seq(55, 60, by = 2)) + theme(
+    plot.title = element_text(size = 12)
+  ) 
+
+print(plot_55_60_nauka)
+
+```
+
+Z wykresu wynika, że kategoria godzin nauki która dominuje w przypadku niższych wyników egzaminu to $[10,15)$. Widzimy też, że w miarę zwiększania wyniku, zwiększa się również ilość uczniów przeznaczających więcej czasu na naukę. Uczniów z kategorii $[20,25)$ jest zauważalnie mniej. Nie pojawiają się również uczniowie spędzający więcej niż 25 godzin na nauce.
+
+```{r}
+#| echo: false
+#| fig-cap: "Histogram wyników (76-101) w zależności od godzin nauki."
+# Tworzenie histogramu dla wyników (76-101) w zależności od godzin nauki
+
+wyniki_wysokie_nauka <- dane |>
+  filter(`Wynik egzaminu` >= 76)
+
+# Histogram dla wyników od 76 do 101
+plot_76_101_nauka <- ggplot(wyniki_wysokie_nauka, aes(x = `Wynik egzaminu`, fill = Godziny_nauki_Category)) +
+  geom_histogram(binwidth = 2, alpha = 0.7, position = "stack", boundary = 76, color = "black") + 
+  scale_fill_manual(values = kolory_godziny_nauki)+
+  labs(
+    title = "Histogram wyników (76-101) w zależności od godzin nauki",
+    x = "Wynik egzaminu",
+    y = "Liczba uczniów",
+    fill = "Kategorie godzin nauki"
+  ) +
+  theme_minimal() +
+  scale_x_continuous(breaks = seq(76, 101, by = 2)) + theme(
+    plot.title = element_text(size = 12)
+  ) 
+
+print(plot_76_101_nauka)
+```
+
+Z wykresu ilości uczniów uzyskujących wyższe wyniki zauważamy znacznie większy stosunek uczniów uczących się więcej niż 15 godzin do reszty. Można stwierdzić, że kategorie $[15.30)$ są dominujące. W gronie uczniów uzyskujących wysokie wyniki, przeciwnie do tych o niskich wynikach, znajdują sie osoby uczące się więcej niż 25 godzin, a liczba osób uczących się mniej niż 10 godzin jest praktycznie niezauważalna.
+
+Aby lepiej zrozumieć, jak różne kategorie godzin poświęconych nauce wpływają na wyniki egzaminu, skupny się na rozkładach gęstości wyników. Wykresy gęstości pozwolą nam lepiej uchwycić kształt i różnice w zależności od godzin poświęconych na naukę do egzaminu.
+
+```{r}
+#| echo: false
+#| fig-cap: "Rozkład gęstości wyników egzaminu w zależności od kategorii godzin nauki."
+# Tworzenie wykresu gęstości dla wyników egzaminu w zależności od kategorii godzin
+
+# Tworzenie kategorii godzin nauki
+dane$Godziny_nauki_Category <- cut(
+  dane$`Godziny nauki`,
+  breaks = c(0, 5, 10, 15, 20, 25, 30, 35, Inf),
+  labels = c("0-5", "5-10", "10-15", "15-20", "20-25", "25-30", "30-35", "35+"),
+  right = FALSE
+)
+
+# Wykres gęstości 
+ggplot(dane, aes(x = `Wynik egzaminu`, color = Godziny_nauki_Category, fill = Godziny_nauki_Category)) +
+  geom_density(alpha = 0.3) + 
+  scale_fill_manual(values = kolory_godziny_nauki)+
+  labs(
+    title = "Rozkład gęstości wyników egzaminu w zależności od kategorii godzin nauki",
+    x = "Wynik egzaminu",
+    y = "Gęstość",
+    fill = "Kategorie godzin nauki",
+    color = "Kategorie godzin nauki"
+  ) +
+  theme_minimal() + theme(
+    plot.title = element_text(size = 10)
+  )
+```
+
+Widzimy, że osoby uczące się mniej uzyskują niższe wyniki egzaminu. Wraz ze wzrostem czasu nauki, szczyt krzywych przesuwa się w stronę wyższych wyników egzaminu.
+
+Kategorie z większą liczbą godzin nauki mają tendencję do wyższych wyników, ale wyniki te mogą być bardziej rozproszone.
+
+W kategoriach z bardzo wysoką liczbą godzin nauki, gęstość jest niska, ale rozciąga się na wyższe wyniki, co świadczy o rzadszych, ale lepszych wynikach.
+
+Aby uzupełnić analizę i zachować informację o rozkładzie danych, zastosujemy wykresy skrzypcowe. Ten typ wizualizacji łączy w sobie zalety wykresów gęstościowych i pudełkowych.
+
+```{r}
+#| echo: false
+#| fig-cap: "Rozkład wyników egzaminu w zależności od kategorii godzin nauki."
+# Tworzenie wykresu violin plot dla wyników egzaminu w zależności od kategorii godzin nauki
+
+# Tworzenie kategorii godzin nauki
+dane$Godziny_nauki_Category <- cut(
+  dane$`Godziny nauki`,
+  breaks = c(0, 5, 10, 15, 20, 25, 30, 35, Inf),
+  labels = c("0-5", "5-10", "10-15", "15-20", "20-25", "25-30", "30-35", "35+"),
+  right = FALSE
+)
+
+# Violin plot
+ggplot(dane, aes(x = Godziny_nauki_Category, y = `Wynik egzaminu`, fill = Godziny_nauki_Category)) +
+  geom_violin(trim = FALSE, alpha = 0.6) +  
+  geom_boxplot(width = 0.1, color = "black", outlier.shape = NA) +  
+  labs(
+    title = "Rozkład wyników egzaminu w zależności od kategorii godzin nauki",
+    x = "Kategorie godzin nauki",
+    y = "Wynik egzaminu"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    plot.title = element_text(size = 12),
+    legend.position = "none"
+  ) +
+  scale_fill_brewer(palette = "Set3") 
+```
+
+W najniższej kategorii czasu poświęconego na naukę wyniki są niskie, gęstość skoncentrowana w niższym przedziale, a mediana najniższa.
+
+Wraz ze wzrostem czasu nauki wyniki rosną. Mediana przesuwa się w górę, ale wyniki pozostają rozproszone.
+
+Przy najwyższej kategorii czasu poświęconego na naukę wyniki wciąż są wysokie, ale dłuższe skrzypce wskazuje na znaczącą różnorodność wyników. Możliwe, że efektywność nauki spada przy tak długim czasie.
+
+Wykresy skrzypcowe wyraźnie sugerują istnienie zależności - osoby poświęcające więcej czasu na naukę osiągają lepsze wyniki egzaminu. Aby dokładnie ocenić siłę tej relacji i pogłębić naszą analizę zastosujemy model regresji liniowej.
+
+```{r}
+#| echo: false
+#| fig-cap: "Wynik egzaminu w zależności od godzin nauki i płci."
+#| massage: false
+#| warning: false
+# Tworzenie regresji liniowej 
+
+# Aktualizacja zmiennej Płeć
+dane <- dane |>
+  mutate(Płeć = recode(Płeć, "Male" = "mężczyzna", "Female" = "kobieta"))
+
+# Obliczanie regresji liniowej
+model_nauka <- lm(`Wynik egzaminu` ~ `Godziny nauki`, data = dane)
+model_eq_nauka <- sprintf("y = %.2fx + %.2f", coef(model_nauka)[2], coef(model_nauka)[1])
+
+# Regresja liniowa
+ggplot(dane, aes(x = `Godziny nauki`, y = `Wynik egzaminu`, color = Płeć)) +
+  geom_point(alpha = 0.7) +
+  geom_smooth(method = "lm", se = FALSE, color = "black") +
+  labs(
+    title = "Wynik egzaminu w zależności od godzin nauki i płci",
+    x = "Godziny nauki",
+    y = "Wynik egzaminu",
+    color = "Płeć"
+  ) +
+  annotate(
+    "text",
+    x = max(dane$`Godziny nauki`) - 8,  
+    y = min(dane$`Wynik egzaminu`) + 5, 
+    label = model_eq_nauka,
+    size = 4,                           
+    color = "black"
+  ) +
+  theme_minimal() + theme(
+    plot.title = element_text(size = 12)
+  )
+
+```
+
+Z równania regresji wynika, że z każdą dodatkowo przepracowaną godziną nauki, średni wynik wzrasta o około $0.29$ punktu. Wartość $61.44$ to punkt przecięcia linii regresji z osią Y, czyli przewidywany wynik egzaminu przy zerowych godzinach nauki.
+
+Zauważamy dodatnią zależność między liczbą godzin nauki a wynikiem egzaminu - im więcej czasu poświęcono na naukę, tym wyższy średni wynik. Zależność nie jest jednak bardzo silna (niewielkie nachylenie linii), co oznacza, że poza nauką istnieją inne czynniki wpływające na wynik egzaminu.
+
+Wyniki egzaminu są podobnie rozproszone dla obu płci. Nie widać wyraźnych różnic między mężczyznami a kobietami w poziomie wyników egzaminu przy danej liczbie godzin nauki.
+
+Mimo dodatniej zależności, zauważamy zmienność wyników. Nie wszystkie osoby osiągają wysokie wyniki nawet przy dużej liczbie godzin nauki.
+
+Wyniki egzaminu przy mniejszej liczbie godzin nauki są widocznie bardziej skoncentrowane w dolnej części wykresu.
+
+Analiza wykresu sugeruje, że nauka ma pozytywny wpływ na wynik egzaminu, jednak efektywność nauki jest stosunkowo niska.
+
+Podsumowując wszystkie powyższe wykresy, dłuższy czas nauki pozytywnie wpływa na wyniki egzaminu końcowego. Studenci poświęcający więcej czasu na naukę osiągają lepsze wyniki, niż ci uczący się mniej.
+
+### Jak obecność na zajeciach wpływa na wynik egzaminu końcowego?
+
+Przyjrzyjmy się następnie zależności o najwyższej wartości obliczonej korelacji Pearsona, czyli relacji między frekwencją, a wynikiem egzaminu.
+
+```{r}
+#| echo: false
+#| fig-cap: "Histogram wyników egzaminu w zależności od frekwencji."
+#Tworzenie histogramu wyników egzaminu w zależności od frekwencji
+
+#Ustawienie palety kolorów
+kolory_frekwencja <- c(
+  "60-65" = "#ff6666",
+  "65-70" = "#D7AA35",
+  "70-75" = "#9BBF3E",
+  "75-80" = "#33C885",
+  "80-85" = "#4DD2D6",
+  "85-90" = "#009EEA",
+  "90-95" = "#C679FF",
+  "95-100" = "#FF75D2",
+  "100" = "#CE008B"
+)
+# Tworzenie kategorii godzin nauki
+dane$Frekwencja_Category <- cut(
+  dane$Frekwencja,
+  breaks = c(60, 65, 70, 75, 80, 85, 90, 95, 100,Inf),
+  labels = c("60-65", "65-70", "70-75", "75-80", "80-85", "85-90", "90-95", "95-100", "100"),
+  right = FALSE
+)
+
+
+# Histogram
+library(ggplot2)
+ggplot(dane, aes(x = `Wynik egzaminu`, fill = Frekwencja_Category)) +
+  geom_histogram(binwidth = 1, alpha = 0.7, position = "stack",color = "black") + scale_fill_manual(values = kolory_frekwencja)+
+  labs(
+    title = "Histogram wyników egzaminu w zależności od frekwencji",
+    x = "Wynik egzaminu",
+    y = "Liczba uczniów",
+    fill = "Kategorie frekwencji"
+  ) +
+  theme_minimal() + theme(
+    plot.title = element_text(size = 12)
+  )
+```
+
+Słupki tego samego histogramu, co w poprzednim pytaniu badawczym, tym razem podzielone zostały według kategorii frekwencji na zajęciach. Anlizując kolory odpowiadające poszczególnym kategoriom, możemy zauważyć, że frekwencja rzeczywiście wpływa na wyniki egzaminu. Uczniowie z niższą frekwencją dominują po lewej stronie rozkładu, co wskazuje na osiąganie przez nich niższych wyników. Z kolei osoby z wysoką frekwencją, w szczególności tej powyżej $90\%$ częściej pojawiają się po prawej stronie rozkładu, co świadczy o uzyskiwaniu wyższych wyników.
+
+Przyjrzyjmy się następnie histogramom wartości odstających.
+
+```{r}
+#| echo: false
+#| fig-cap: "Histogram wyników (0-60) w zależności od frekwencji."
+#Tworzenie histogramu dla wyników (0-60) w zależności od frekwencji
+
+wyniki_niskie_frek <- dane |>
+  filter(`Wynik egzaminu` <= 60)
+
+# Histogram dla wyników od 55 do 60
+plot_55_60_frek <- ggplot(wyniki_niskie_frek, aes(x = `Wynik egzaminu`, fill = Frekwencja_Category)) +
+  geom_histogram(binwidth = 1, alpha = 0.7, position = "stack", boundary = 55, color = "black") + scale_fill_manual(values = kolory_frekwencja)+
+  labs(
+    title = "Histogram wyników (0-60) w zależności od frekwencji",
+    x = "Wynik egzaminu",
+    y = "Liczba uczniów",
+    fill = "Kategorie frekwencji"
+  ) +
+  theme_minimal() +
+  scale_x_continuous(breaks = seq(55, 60, by = 2)) + theme(
+    plot.title = element_text(size = 12)
+  ) 
+
+print(plot_55_60_frek)  
+```
+
+Większość uczniów, którzy uzyskali najniższe wyniki, ma bardzo niską frekwencję (głównie w kategoriach $[60,70)$. Uczniowie z wyższą frekwencją praktycznie nie pojawiają się w tym przedziale wyników. Można założyć, że niskie wyniki są prawdopodobnie związane z niską obecnością na zajeciach.
+
+```{r}
+#| echo: false
+#| fig-cap: "Histogram wyników (76-101) w zależności od frekwencji."
+# Tworzenie histogramu dla wyników (76-101) w zależności od frekwencji
+
+wyniki_wysokie_frek <- dane |>
+  filter(`Wynik egzaminu` >= 76)
+
+# Histogram dla wyników od 76 do 101
+plot_76_101_frek <- ggplot(wyniki_wysokie_frek, aes(x = `Wynik egzaminu`, fill = Frekwencja_Category)) +
+  geom_histogram(binwidth = 2, alpha = 0.7, position = "stack", boundary = 76, color = "black") + scale_fill_manual(values = kolory_frekwencja)+
+  labs(
+    title = "Histogram wyników (76-101) w zależności od frekwencji",
+    x = "Wynik egzaminu",
+    y = "Liczba uczniów",
+    fill = "Kategorie frekwancja"
+  ) +
+  theme_minimal() +
+  scale_x_continuous(breaks = seq(76, 101, by = 2)) + theme(
+    plot.title = element_text(size = 12)
+  ) 
+  
+
+print(plot_76_101_frek)
+```
+
+Wysokie wyniki są osiągane przez uczniów z różnymi poziomami frekwencji, natomiast znacznie przeważają osoby z frekwencją na poziomie $70+$, przeciwnie do wartości najniższych.
+
+Przyjrzyjmy się teraz wykresom gęstości wyników egzaminu dla poszczególnych kategorii frekwencji, aby zobaczyć, które grupy osiągają lepsze wyniki i jak różnią się między sobą.
+
+```{r}
+#| echo: false
+#| fig-cap: "Rozkład gęstości wyników egzaminu w zależności od kategorii frekwencji."
+# Tworzenie wykresu gęstości dla wyników egzaminu w zależności od kategorii frekwencji
+
+# Tworzenie kategorii godzin nauki
+dane$Frekwencja_Category <- cut(
+  dane$Frekwencja,
+  breaks = c(60, 65, 70, 75, 80, 85, 90, 95, 100, Inf),
+  labels = c("60-65", "65-70", "70-75", "75-80", "80-85", "85-90", "90-95", "95-100", "100"),
+  right = FALSE
+)
+
+# Wykres gęstości
+ggplot(dane, aes(x = `Wynik egzaminu`, color = Frekwencja_Category, fill = Frekwencja_Category)) +
+  geom_density(alpha = 0.3) + scale_fill_manual(values = kolory_frekwencja) +
+  labs(
+    title = "Rozkład gęstości wyników egzaminu w zależności od kategorii frekwencji",
+    x = "Wynik egzaminu",
+    y = "Gęstość",
+    fill = "Kategorie frekwencja",
+    color = "Kategorie frekwencja"
+  ) +
+  theme_minimal() + theme(
+    plot.title = element_text(size = 11)
+  )
+```
+
+Na wykresie widzimy, że grupy o wyższej frekwencji mają wyższe wyniki egzaminów, co widać po przesunięciu ich rozkładów w prawo.
+
+Grupy o niższej frekwencji mają wyniki skoncentrowane bliżej lewej strony, co świadczy o gorzej napisanym egzaminie.
+
+Potwierdza to pozytywną korelację między frekwencją a wynikami egzaminu.
+
+Przeanalizujmy teraz wykresy skrzypcowe zależności wyniku egzaminu od kategorii frekwencji.
+
+```{r}
+#| echo: false
+#| fig-cap: "Rozkład wyników egzaminu w zależności od kategorii frekwencji."
+# Tworzenie wykresu violn plot dla wyników egzaminu w zależności od kategorii frekwencji
+
+# Tworzenie kategorii godzin nauki
+dane$Frekwencja_Category <- cut(
+  dane$`Frekwencja`,
+  breaks = c(60, 65, 70, 75, 80, 85, 90, 95, 100, Inf),
+  labels = c("60-65", "65-70", "70-75", "75-80", "80-85", "85-90", "90-95", "95-100", "100"),
+  right = FALSE
+)
+
+# Violin plot
+ggplot(dane, aes(x = Frekwencja_Category, y = `Wynik egzaminu`, fill = Frekwencja_Category)) +
+  geom_violin(trim = FALSE, alpha = 0.6) +  
+  geom_boxplot(width = 0.1, color = "black", outlier.shape = NA) +  
+  labs(
+    title = "Rozkład wyników egzaminu w zależności od kategorii frekwencji",
+    x = "Kategorie frekwencji",
+    y = "Wynik egzaminu"
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    plot.title = element_text(size = 12),
+    legend.position = "none"  
+  ) +
+  scale_fill_brewer(palette = "Set3") 
+```
+
+Widzimy, że im wyższe kategorie frekwencji, tym wyższe mediany wyników.
+
+W każdej kategorii wysokości pudełek pozostają podobne, co świadczy o podobnym rozrzucie wartości.
+
+W grupach o niższej frekwencji pojawiają się zarówno bardzo niskie, jak i sporadycznie wysokie wyniki, co świadczy o mniejszej przewidywalności.
+
+```{r}
+#| echo: false
+#| fig-cap: "Wynik egzaminu w zależności od frekwencji i płci."
+#| warning: false
+#| massage: false
+# Tworzenie regresji liniowej
+
+# Aktualizacja zmiennej Płeć
+dane <- dane |>
+  mutate(Płeć = recode(Płeć, "Male" = "mężczyzna", "Female" = "kobieta"))
+
+# Obliczanie regresji liniowej
+model_frek <- lm(`Wynik egzaminu` ~ Frekwencja, data = dane)
+model_eq_frek <- sprintf("y = %.2fx + %.2f", coef(model_frek)[2], coef(model_frek)[1])
+
+# Regresja liniowa
+ggplot(dane, aes(x = Frekwencja, y = `Wynik egzaminu`, color = Płeć)) +
+  geom_point(alpha = 0.7) +
+  geom_smooth(method = "lm", se = FALSE, color = "black") +
+  labs(
+    title = "Wynik egzaminu w zależności od frekwencji i płci",
+    x = "Frekwencja",
+    y = "Wynik egzaminu",
+    color = "Płeć"
+  ) +
+  annotate(
+    "text",
+    x = max(dane$Frekwencja) - 8,  
+    y = min(dane$`Wynik egzaminu`) + 5, 
+    label = model_eq_frek,
+    size = 4,                           
+    color = "black"
+  ) +
+  theme_minimal() + theme(
+    plot.title = element_text(size = 12)
+  )
+```
+
+Z równania regresji wynika, że każdemu wzrostowi frekwencji o $1\%$ odpowiada średni wzrost wyniku egzaminu o $0.2$ punktu. Punkt przecięcia regresji z osią Y równy $51.52$ oznacza przewidywany wynik egzaminu, gdy frekwencja wynosi $0\%$.
+
+Płeć nie ma silnego wpływu na wynik egzaminu w analizie z użyciem frekwencji.
+
+Linia trendu wskazuje dodatnią zależność między frekwencją a wynikiem egzaminu, jest to jednak słaba zależność.
+
+Podsumowując wszystkie powyższe wykresy, frekwencja na zajęciach ma pozytywny wpływ na wynik egzaminu końcowego. Uczniowie spędzający więcej czasu na zajęciach uzyskują lepsze wyniki od tych pojawiających się na nich rzadko.
+
+### Jak dodatkowe wsparcie edukacyjne wpływa na wynik egzaminu?
+
+W nauce i przyswajaniu wiedzy, oprócz zajęć w szkole, pomocne jest również dodatkowe wsparcie edukacyjne. W tym pytaniu badawczym sprawdzimy czy uczęszczanie na korepetycje, dostęp do internetu i dodatkowych źródeł wpływa na końcowy wynik egzaminu.
+
+W pierwszej kolejności zbadajmy procentowy udział osób z dodatkowym wsparciem edukacyjnym:
+
+```{r}
+#| echo: false
+#| warning: false
+#| fig.width: 4.5
+#| fig.height: 6
+#| fig.align: center
+#| fig-cap: "Procentowy udział osób z dodatkowym wsparciem edukacyjnym."
+# Tworzenie wykresów kołowych przedstawiające procentowy udział osób z dodatkowym wsparciem edukacyjnym
+
+dane$Korepetycje_1_Godzina <- ifelse(dane$`Godziny korepetycji` >= 1, "Pobierających korepetycje", "Nie pobierających korepetycji")
+
+# Korepetycje
+korepetycje_brak <- table(dane$Korepetycje_1_Godzina)
+korepetycje_brak_procent <- prop.table(korepetycje_brak) * 100
+
+# Dostęp do internetu
+uczniowie_z_internetem <- sum(dane$`Dostęp do internetu` == "Yes", na.rm = TRUE)
+uczniowie_bez_internetu <- sum(dane$`Dostęp do internetu` == "No", na.rm = TRUE)
+total_students <- uczniowie_z_internetem + uczniowie_bez_internetu
+percent_internet <- (uczniowie_z_internetem / total_students) * 100
+percent_no_internet <- (uczniowie_bez_internetu / total_students) * 100
+
+# Dane do wykresu kołowego dla internetu
+data_pie <- data.frame(
+  category = c("Z dostępem do internetu", "Bez dostępu do internetu"),
+  count = c(uczniowie_z_internetem, uczniowie_bez_internetu),
+  percentage = c(percent_internet, percent_no_internet)
+)
+
+# Dostęp do dodatkowych materiałów
+uczniowie_low_access <- sum(dane$`Dostęp do dodatkowych materiałów` == "Low", na.rm = TRUE)
+
+uczniowie_medium_access <- sum(dane$`Dostęp do dodatkowych materiałów` == "Medium", na.rm = TRUE)
+
+uczniowie_high_access <- sum(dane$`Dostęp do dodatkowych materiałów` == "High", na.rm = TRUE)
+
+
+percent_low_access <- (uczniowie_low_access / total_students) * 100
+
+percent_medium_access <- (uczniowie_medium_access / total_students) * 100
+
+percent_high_access <- (uczniowie_high_access / total_students) * 100
+
+# Dane do wykresu kołowego dla dostępu do dodatkowych materiałów
+data_pie_access <- data.frame(
+  category = c("Z małym dostępem do materiałów dodatkowych", "Ze średnim dostępem do materiałów dodatkowych", "Z dużym dostępem do materiałów dodatkowych"),
+  count = c(uczniowie_low_access, uczniowie_medium_access, uczniowie_high_access),
+  percentage = c(percent_low_access, percent_medium_access, percent_high_access)
+)
+
+# Ustawienie palety kolorów
+kolory1 <- c(
+  "Pobierających korepetycje" = "#29b6f6",
+  "Nie pobierających korepetycji" = "#01579b"
+)
+
+
+# Wykres 1: Procent uczniów z korepetycjami i bez korepetycji
+ggplot1 <- ggplot(as.data.frame(korepetycje_brak), aes(x = "", y = Freq, fill = factor(Var1))) +
+  geom_bar(stat = "identity", width = 1, color = "black") +
+  coord_polar(theta = "y") +  
+  geom_text(aes(label = paste0(round(korepetycje_brak_procent, 1), "%")), 
+            position = position_stack(vjust = 0.5), size = 4, color = "white") +  
+  labs(
+    title = "Procent uczniów pobierających korepetycje",
+    x = NULL,
+    y = NULL
+  ) + 
+  scale_fill_manual(values = kolory1) +
+  theme_void() +  # Usunięcie osi
+  theme(
+    egend.position = "right",
+    legend.title = element_blank(),
+    plot.title = element_text(size = 12),
+    legend.text = element_text(size = 8)
+  )
+
+
+# Ustawienie palety kolorów
+kolory2 <- c(
+  "Bez dostępu do internetu" = "#1A9C13",
+  "Z dostępem do internetu" = "#47E33F"
+)
+
+# Wykres 2: Procent uczniów z dostępem do internetu vs bez internetu
+ggplot2 <- ggplot(data_pie, aes(x = "", y = count, fill = category)) +
+  geom_bar(stat = "identity", width = 1, color = "black") +  
+  coord_polar("y") +  
+  geom_text(aes(label = paste0(round(percentage, 1), "%")), position = position_stack(vjust = 0.5), size = 4, color = "white") +  
+  labs(
+    title = "Procent uczniów z dostępem do internetu",
+    x = NULL,
+    y = NULL
+  ) +
+  scale_fill_manual(values = kolory2) +
+  theme_void() +  
+  theme(
+    egend.position = "right",
+    legend.title = element_blank(),
+    plot.title = element_text(size = 12),
+    legend.text = element_text(size = 8)
+  )
+
+# Ustawienie palety kolorów
+kolory3 <- c(
+  "Z małym dostępem do materiałów dodatkowych" = "#ff8a65",
+  "Ze średnim dostępem do materiałów dodatkowych" = "#ff9100",
+  "Z dużym dostępem do materiałów dodatkowych" = "#f4511e"
+)
+
+
+# Wykres 3: Procent uczniów z dostępem do materiałów dodatkowych
+ggplot3 <- ggplot(data_pie_access, aes(x = "", y = count, fill = category)) +
+  geom_bar(stat = "identity", width = 1, color = "black") +  
+  coord_polar("y") +  
+  geom_text(aes(label = paste0(round(percentage, 1), "%")), position = position_stack(vjust = 0.5), size = 4, color = "white") +  
+  labs(
+    title = "Procent uczniów z dostępem do materiałów dodatkowych",
+    x = NULL,
+    y = NULL
+  ) +
+  scale_fill_manual(values = kolory3)+
+  theme_void() +  
+  theme(
+    egend.position = "right",
+    legend.title = element_blank(),
+    plot.title = element_text(size = 12),
+    legend.text = element_text(size = 8)
+  )
+
+# Łączenie wykresów 
+combined_plot <- ggplot1 / ggplot2 / ggplot3
+
+print(combined_plot)
+```
+
+W wykresów wynika, że ponad $77\%$ uczniów pobiera minimum jedną godzinę korepetycji w miesiącu, aż $92.4\%$ uczniów posiada dostęp do internetu, a w sumie $80\%$ uczniów ma minimum średni dostęp do materiałów dodatkowych. Te wysokie wartości świadczą o tym, że większość uczniów ma szeroki dostęp do wsparcia edukacyjnego i technologii, co może pozytywnie wpływać na ich proces nauki i wyniki końcowe. Sprawdzimy czy faktycznie tak jest omawiając każdy przypadek osobno.
+
+#### Korepetycje
+
+Na początku zbadamy ilość osób uczęszczających na korepetycje. Naszym warunkiem zakwalifikowania do tej grupy jest odbycie minimum jednej godziny takich zajęć w ciągu miesiąca.
+
+```{r}
+#| echo: false
+#| fig.width: 5.5
+#| fig.height: 3
+#| fig.align: center
+#| fig-cap: "Rozkład wyników egzaminu dla uczniów z korepetycjami."
+# Tworzenie wykresu słupowego dla wyników egzaminu dla uczniów z korepetycjami
+
+# Odfiltrowanie uczniów z przynajmniej 1 godziną korepetycji
+uczniowie_korepetycje <- dane[dane$`Godziny korepetycji` >= 1, ]
+
+# Dodanie kolumny z przedziałami wyników egzaminu dla uczniów z korepetycjami
+uczniowie_korepetycje$Wynik_korepetycje <- cut(
+  uczniowie_korepetycje$`Wynik egzaminu`,
+  breaks = seq(floor(min(uczniowie_korepetycje$`Wynik egzaminu`, na.rm = TRUE)), 
+               ceiling(max(uczniowie_korepetycje$`Wynik egzaminu`, na.rm = TRUE)), 
+               by = 5),
+  right = TRUE,  
+  include.lowest = TRUE
+)
+# Grupowanie i liczenie 
+wyniki_zgrupowane <- as.data.frame(table(uczniowie_korepetycje$Wynik_korepetycje))
+colnames(wyniki_zgrupowane) <- c("Wynik_korepetycje", "Liczba_studentów")
+
+# Wykres słupkowy
+ggplot(wyniki_zgrupowane, aes(x = Wynik_korepetycje, y = Liczba_studentów)) +
+  geom_bar(stat = "identity", fill = "lightblue", color = "black") +
+  geom_text(aes(label = Liczba_studentów), vjust = -0.5, size = 3) +  
+  labs(
+    title = "Rozkład wyników egzaminu dla uczniów z korepetycjami",
+    x = "Wyniki egzaminu",
+    y = "Liczba uczniów"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+    plot.title = element_text(size = 12)
+  ) + expand_limits(y = max(wyniki_zgrupowane$Liczba_studentów) + 150)
+```
+
+Z wykresu wynika, że suma osób pobierających korepetycje to 4919 i, że większość tych osób uzyskało wynik $(65,70]$. Zbadajmy teraz wyniki egzaminu osób niepobierających korepetycji.
+
+```{r}
+#| echo: false
+#| fig.width: 5.5
+#| fig.height: 3
+#| fig.align: center
+#| fig-cap: "Rozkład wyników egzaminu dla uczniów bez korepetycji."
+# Tworzenie wykresu słupkowego dla wyników egzaminu dla uczniów bez korepetycj
+
+# Odfiltrowanie uczniów, którzy nie mieli korepetycji
+uczniowie_brak_korepetycji <- dane[dane$`Godziny korepetycji` == 0, ]
+
+# Dodanie kolumny z przedziałami wyników egzaminu
+uczniowie_brak_korepetycji$Wynik_korepetycje <- cut(
+  uczniowie_brak_korepetycji$`Wynik egzaminu`,
+  breaks = seq(floor(min(uczniowie_brak_korepetycji$`Wynik egzaminu`, na.rm = TRUE)), 
+               ceiling(max(uczniowie_brak_korepetycji$`Wynik egzaminu`, na.rm = TRUE)), 
+               by = 5),
+  right = TRUE,  
+  include.lowest = TRUE
+)
+# Grupowanie i liczenie 
+wyniki_brak_korepetycji <- as.data.frame(table(uczniowie_brak_korepetycji$Wynik_korepetycje))
+colnames(wyniki_brak_korepetycji) <- c("Wynik_korepetycje", "Liczba_studentów")
+
+# Wykres słupkowy
+ggplot(wyniki_brak_korepetycji, aes(x = Wynik_korepetycje, y = Liczba_studentów)) +
+  geom_bar(stat = "identity", fill = "#5c6bc0", color = "black") +
+  geom_text(aes(label = Liczba_studentów), vjust = -0.5, size = 3) +  
+  labs(
+    title = "Rozkład wyników egzaminu dla uczniów bez korepetycji",
+    x = "Wyniki egzaminu",
+    y = "Liczba uczniów"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+    plot.title = element_text(size = 12)) + expand_limits(y = max(wyniki_brak_korepetycji$Liczba_studentów) + 100)
+
+```
+
+W wykresu wynika, że suma osób niepobierających korepetycji to 1456 i, że większość tych osób uzyskało wynik $(61,66]$, czyli mniej od osób uczęszczających na korepetycje. Jednakże, podobnie dużą grupą są również osoby, które uzyskały wynik z przedziału $(66,71]$, a są to wartości bardzo podobne do wykresu poprzedniego.
+
+W celu lepszego porównania danych przedstawmy wykres gęstości wyniku z egzaminu dla obu tych grup:
+
+```{r}
+#| echo: false
+#| fig-cap: "Gęstość wyników egzaminu w zależności od korepetycji."
+# Tworzenie wykresu gęstości dla wyników egzaminu w zależności od korepetycji
+
+uczniowie_korepetycje$Group <- "Uczniowie z korepetycjami"
+
+uczniowie_brak_korepetycji$Group <- "Uczniowie bez korepetycji"
+
+# Połączenie danych w jedną ramkę
+dane_porownawcze <- rbind(uczniowie_korepetycje, uczniowie_brak_korepetycji)
+
+# Wykres gęstości
+ggplot(dane_porownawcze, aes(x = `Wynik egzaminu`, fill = Group)) +
+  geom_density(alpha = 0.5) +  
+  labs(
+    title = "Gęstość wyników egzaminu w zależności od korepetycji",
+    x = "Wyniki egzaminu",
+    y = "Gęstość",
+    fill = ""
+  ) + scale_fill_manual(
+    values = c("Uczniowie z korepetycjami" = "#29b6f6",  
+               "Uczniowie bez korepetycji" = "#1a237e")  
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "top",
+    plot.title = element_text(size = 12)
+  )
+```
+
+Z wykresu wynika, że wyniki uczniów bez korepetycji są skoncentrowane bardziej po lewej stronie niż wyniki uczniów pobierających korepetycje. Sugeruje to niższe wyniki tych pierwszych i większą szansę na uzyskanie lepszego wyniku gdy pobieramy korepetycje. Mimo tego, że nie są to wartości bardzo się różniące, wykres wskazuje, że korepetycje mają pozytywny wpływ na wyniki egzaminu.
+
+Przeanalizujmy teraz wykres skrzypcowy porównujący rozkład wyników egzaminu tych dwóch grup.
+
+```{r}
+#| echo: false
+#| fig-cap: "Rozkład wyników egzaminu w zależności od korepetycji."
+# Tworzenie wykresu violin plot dla wyników egzaminu w zależności od korepetycji
+
+# Violin plot
+ggplot(dane_porownawcze, aes(x = Group, y = `Wynik egzaminu`, fill = Group)) +
+  geom_violin(trim = FALSE, alpha = 0.7) +
+  geom_boxplot(width = 0.1, position = position_dodge(0.9), outlier.shape = NA, color = "black") +
+  labs(
+    title = "Rozkład wyników egzaminu w zależności od korepetycji",
+    x = "Grupa",
+    y = "Wyniki egzaminu"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "none",
+    axis.text.x = element_text(angle = 20, hjust = 1),
+    plot.title = element_text(size = 12)
+  ) +
+  scale_fill_manual(values = c("#1a237e", "#29b6f6"))
+```
+
+Wykresy w obu przypadkach mają podobne szerokości, co wkazuje na podobne zróżnicowanie wyników zarówno w pierwszej, jak i w drugiej grupie.
+
+Wysokości pudełka, reprezentujące kwartyle ($50\%$ wyników) są podobnej wielkości co oznacza, że rozkład wyników dla $50\%$ uczniów w każdej grupie jest podobny.
+
+Kreska w środku pudełek, reprezentuje medianę wyników. W przypadku uczniów pobierających korepetycje jest ona wyższa, co wskazuje na wyższe wyniki w tej grupie.
+
+Sprawdźmy teraz jak wygląda rozkład wyników egzaminu przy konkretnych ilościach godzin korepetycji:
+
+```{r}
+#| echo: false
+#| fig-cap: "Rozkład wyników egzaminu w zależności od liczby godzin korepetycji."
+# Tworzenie wykresu violin plot dla wyników egzaminu w zależności od liczby godzin korepetycji
+
+uczniowie_korepetycje$Group <- "Uczniowie z korepetycjami"
+uczniowie_brak_korepetycji$Group <- "Uczniowie bez korepetycji"
+
+# Filtracja danych, aby usunąć grupy z mniej niż 2 punktami
+dane_porownawcze <- dane_porownawcze |>
+  group_by(`Godziny korepetycji`) |>
+  filter(n() > 1) 
+
+
+# Violin plot
+ggplot(dane_porownawcze, aes(x = factor(`Godziny korepetycji`), y = `Wynik egzaminu`, fill = factor(`Godziny korepetycji`))) +
+  geom_violin(trim = FALSE, alpha = 0.7) +
+  geom_boxplot(width = 0.1, position = position_dodge(0.9), outlier.shape = NA, color = "black") +
+  labs(
+    title = "Rozkład wyników egzaminu w zależności od liczby godzin korepetycji",
+    x = "Liczba godzin korepetycji",
+    y = "Wyniki egzaminu"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "none",
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    plot.title = element_text(size = 11)
+  ) +
+  scale_fill_brewer(palette = "Blues", direction = -1)
+
+```
+
+W wykresie pominęliśmy liczbę godzin korepetycji równą 8, ponieważ w zbiorze danych mamy tylko jeden taki przypadek.
+
+Z wykresu wynika, że dla 0 godzin korepetycji wyniki skupiają się w dolnej części wykresu, a mediana jest najniższa, co oznacza najniższe wyniki egzaminu.
+
+Dla większej liczby godzin korepetycji (1, 2, 3, 4) mediana przesuwa się lekko w górę, a wyniki są podobnie zróżnicowane. Oznacza to pozytywny wpływ większej liczby korepetycji na wynik egzaminu.
+
+Bardziej zauważalne różnice w wynikach obserwujemy przy większej liczbie godzin korepetycji. Chociaż dla 5 godzin i więcej rozkłady wyników egzaminów wykazują większe zróżnicowanie, to jednocześnie mediany tych wyników systematycznie rosną, co wskazuje na pozytywny wpływ dodatkowych godzin nauki.
+
+Ogólnie, im więcej godzin przeznaczmy na korepetycje, tym większą szansę mamy na uzyskanie większego wyniku.
+
+Podsumowując wszystkie powyższe wykresy, uczęszczanie na korepetycje ma pozytywny wpływ na wynik egzaminu. Dodatkowo, im więcej godzin przeznaczymy na korepetycje tym większa szansa na wyższy wynik.
+
+#### Dostęp do internetu
+
+Zbadajmy teraz wpływ dostępu do internetu, czyli, bazując na wykresie kołowym, najbardziej popularnej pomocy naukowej.
+
+Przeanalizujmy ilość osób z dostępem do internetu i ich wyniki z egzaminu:
+
+```{r}
+#| include: false
+# Obliczenie ilości osób z dostępem do internetu i z brakiem dostępu do internetu
+
+# Liczba uczniów z dostępem do internetu
+uczniowie_z_internetem <- sum(dane$`Dostęp do internetu` == "Yes", na.rm = TRUE)
+
+# Liczba uczniów bez dostępu do internetu
+uczniowie_bez_internetu <- sum(dane$`Dostęp do internetu` == "No", na.rm = TRUE)
+
+# Wypisanie wyników
+print(paste("Liczba uczniów z dostępem do internetu:", uczniowie_z_internetem))
+print(paste("Liczba uczniów bez dostępu do internetu:", uczniowie_bez_internetu))
+```
+
+```{r}
+#| echo: false
+#| fig.width: 5.5
+#| fig.height: 3
+#| fig.align: center
+#| fig-cap: "Rozkład wyników egzaminu dla uczniów z dostępem do internetu."
+# Tworzenie wykresu słupkowego dla wyników egzaminu dla uczniów z dostępem do internetu
+
+# Odfiltrowanie uczniów z dostępem do internetu
+uczniowie_internet <- dane[dane$`Dostęp do internetu` == "Yes", ]
+
+# Dodanie kolumny z przedziałami wyników egzaminu
+uczniowie_internet$Wynik_internet <- cut(
+  uczniowie_internet$`Wynik egzaminu`,
+  breaks = seq(floor(min(uczniowie_internet$`Wynik egzaminu`, na.rm = TRUE)), 
+               ceiling(max(uczniowie_internet$`Wynik egzaminu`, na.rm = TRUE)), 
+               by = 5),
+  right = TRUE,  
+  include.lowest = TRUE
+)
+# Grupowanie i liczenie 
+wyniki_internet <- as.data.frame(table(uczniowie_internet$Wynik_internet))
+colnames(wyniki_internet) <- c("Wynik_internet", "Liczba_studentów")
+
+# Wykres słupkowy
+ggplot(wyniki_internet, aes(x = Wynik_internet, y = Liczba_studentów)) +
+  geom_bar(stat = "identity", fill = "#77F570", color = "black") +
+  geom_text(aes(label = Liczba_studentów), vjust = -0.5, size = 3) +  
+  labs(
+    title = "Rozkład wyników egzaminu dla uczniów z dostępem do internetu",
+    x = "Wyniki egzaminu",
+    y = "Liczba uczniów"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+    plot.title = element_text(size = 12)) + expand_limits(y = max(wyniki_internet$Liczba_studentów) + 150)
+```
+
+Z wykresu wynika, że suma osób z dostępem do internetu to 5893 i, że większość tych osób uzyskało wynik $(65,70]$. Zbadajmy teraz wyniki egzaminu osób bez dostępu do internetu.
+
+```{r}
+#| echo: false
+#| fig.width: 5.5
+#| fig.height: 3
+#| fig.align: center
+#| fig-cap: "Rozkład wyników egzaminu dla uczniów bez dostępu do internetu."
+# Tworzenie wykresu słupkowego dla wyników egzaminu dla uczniów bez dostępu do internetu
+
+# Odfiltrowanie uczniów bez dostępu do internetu
+uczniowie_bez_internetu <- dane[dane$`Dostęp do internetu` == "No", ]
+
+# Dodanie kolumny z przedziałami wyników egzaminu
+uczniowie_bez_internetu$Wynik_internet <- cut(
+  uczniowie_bez_internetu$`Wynik egzaminu`,
+  breaks = seq(floor(min(uczniowie_bez_internetu$`Wynik egzaminu`, na.rm = TRUE)), 
+               ceiling(max(uczniowie_bez_internetu$`Wynik egzaminu`, na.rm = TRUE)), 
+               by = 5),
+  right = TRUE,  
+  include.lowest = TRUE
+)
+
+# Grupowanie i liczenie
+wyniki_bez_internetu <- as.data.frame(table(uczniowie_bez_internetu$Wynik_internet))
+colnames(wyniki_bez_internetu) <- c("Wynik_internet", "Liczba_studentów")
+
+# Filtrujemy tylko te przedziały, które zawierają uczniów
+wyniki_bez_internetu <- wyniki_bez_internetu[wyniki_bez_internetu$Liczba_studentów > 0, ]
+
+# Wykres słupkowy
+ggplot(wyniki_bez_internetu, aes(x = Wynik_internet, y = Liczba_studentów)) +
+  geom_bar(stat = "identity", fill = "#7cb342", color = "black") +
+  geom_text(aes(label = Liczba_studentów), vjust = -0.5, size = 3) +  
+  labs(
+    title = "Rozkład wyników egzaminu dla uczniów bez dostępu do internetu",
+    x = "Wyniki egzaminu",
+    y = "Liczba uczniów"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+    plot.title = element_text(size = 12)) +
+  scale_x_discrete(
+    limits = levels(wyniki_bez_internetu$Wynik_internet)[
+      as.numeric(gsub("[^0-9]", "", levels(wyniki_bez_internetu$Wynik_internet))) >= 55
+    ] 
+  ) + expand_limits(y = max(wyniki_bez_internetu$Liczba_studentów) + 50)
+```
+
+Z wykresu wynika, że suma osób bez dostępu do internetu to 485 i, że większość tych osób uzyskało wynik $(63,68]$, czyli mniej od osób z dostępem do internetu.
+
+W celu lepszego porównania danych przedstawmy wykres gęstości wyniku z egzaminu dla obu tych grup:
+
+```{r}
+#| echo: false
+#| fig-cap: "Gęstość wyników egzaminu w zależności od dostępu do internetu uczniów."
+# Tworzenie wykresu gęstości dla wyników egzaminu w zależności od dostępu do internetu uczniów
+
+# Filtracja uczniów na podstawie dostępu do internetu
+uczniowie_z_internetem <- dane[dane$`Dostęp do internetu` == "Yes", ]
+uczniowie_bez_internetu <- dane[dane$`Dostęp do internetu` == "No", ]
+
+uczniowie_z_internetem$Group <- "Z dostępem do internetu"
+uczniowie_bez_internetu$Group <- "Bez dostępu do internetu"
+
+# Połączenie danych w jedną ramkę
+dane_porownawcze <- rbind(uczniowie_z_internetem, uczniowie_bez_internetu)
+
+# Wykres gęstości
+ggplot(dane_porownawcze, aes(x = `Wynik egzaminu`, fill = Group)) +
+  geom_density(alpha = 0.5) +  
+  labs(
+    title = "Gęstość wyników egzaminu w zależności od dostępu do internetu uczniów",
+    x = "Wyniki egzaminu",
+    y = "Gęstość",
+    fill = ""
+  ) +  scale_fill_manual(
+    values = c("Bez dostępu do internetu" = "#21731D",  
+               "Z dostępem do internetu" = "#77F570")  
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "top",
+    plot.title = element_text(size = 10)
+  )
+```
+
+Z wykresu wynika, że wyniki uczniów bez dostępu do internetu są skoncentrowane bardziej po lewej stronie niż wyniki uczniów z dostępem do internetu. Oznacza to, że wyniki osób z dostępem do internetu są wyższe. Dostęp do internetu ma pozytywny wpływ na wynik egzaminu.
+
+Przeanalizujmy teraz wykres skrzypcowe dla obu grup:
+
+```{r}
+#| echo: false
+#| fig-cap: "Rozkład wyników egzaminu w zależności od dostępu do internetu."
+# Tworzenie wykresu violin plot dla wyników egzaminu w zależności od dostęu do internetu
+
+dane_porownawcze <- rbind(uczniowie_z_internetem, uczniowie_bez_internetu)
+
+# Violin plot
+ggplot(dane_porownawcze, aes(x = Group, y = `Wynik egzaminu`, fill = Group)) +
+  geom_violin(trim = FALSE, alpha = 0.7) +
+  geom_boxplot(width = 0.1, position = position_dodge(0.9), outlier.shape = NA, color = "black") +
+  labs(
+    title = "Rozkład wyników egzaminu w zależności od dostęu do internetu",
+    x = "Grupa",
+    y = "Wyniki egzaminu"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "none",
+    axis.text.x = element_text(angle = 15, hjust = 1),
+    plot.title = element_text(size = 12)
+  ) +
+  scale_fill_manual(values = c("#21731D", "#77F570"))
+```
+
+Wykresy w obu przypadkach mają podobne szerokości, co wskazuje na podobne zróżnicowanie wyników zarówno w pierwszej, jak i w drugiej grupie.
+
+Wysokości pudełka, czyli $50\%$ wyników, są podobne w obu grupach wielkości co oznacza, że rozkład wyników dla $50\%$ uczniów w każdej grupie jest podobny.
+
+Mediana w przypadku uczniów z dostępem do internetu jest większa, co wskazuje na wyższe wyniki w tej grupie.
+
+Podsumowując, dostęp do internetu ma pozytywny wpływ na wynik egzaminu.
+
+#### Dostęp do dodatkowych zasobów
+
+Zajmijmy się teraz już ostatnią dodatkową pomocną naukową, czyli dostępem do dodatkowych materiałów.
+
+```{r}
+#| include: false
+#| echo: false
+# Obliczenie ilości osób z małym, średnim i dużym dostępem do zasobów
+
+# Liczba uczniów z dostępem "Low" do zasobów
+uczniowie_low_access <- sum(dane$`Dostęp do dodatkowych materiałów` == "Low", na.rm = TRUE)
+
+# Liczba uczniów z dostępem co najmniej "Medium" do zasobów
+uczniowie_medium_access <- sum(dane$`Dostęp do dodatkowych materiałów` == "Medium", na.rm = TRUE)
+
+uczniowie_high_access <- sum(dane$`Dostęp do dodatkowych materiałów` == "High", na.rm = TRUE)
+
+# Wypisanie wyników
+print(paste("Liczba uczniów z małym dostępem do zasobów:", uczniowie_low_access))
+print(paste("Liczba uczniów ze średnim dostępem do zasobów:", uczniowie_medium_access))
+print(paste("Liczba uczniów z dużym dostępem do zasobów:", uczniowie_high_access))
+
+```
+
+```{r}
+#| echo: false
+#| fig.width: 5.5
+#| fig.height: 3
+#| fig.align: center
+#| fig-cap: "Rozkład wyników egzaminu dla uczniów z dużym dostępem do zasobów."
+# Tworzenie wykresu słupkowego dla wyników egzaminu dla uczniów z dużym dostępem do zasobów
+
+
+# Filtrowanie uczniów z wysokim dostępem do zasobów
+uczniowie_access_high <- dane[dane$`Dostęp do dodatkowych materiałów` == "High", ]
+
+# Dodanie kolumny z przedziałami wyników egzaminu
+uczniowie_access_high$Wynik_zasoby <- cut(
+  uczniowie_access_high$`Wynik egzaminu`,
+  breaks = seq(floor(min(uczniowie_access_high$`Wynik egzaminu`, na.rm = TRUE)), 
+               ceiling(max(uczniowie_access_high$`Wynik egzaminu`, na.rm = TRUE)), 
+               by = 5),
+  right = TRUE,  
+  include.lowest = TRUE
+)
+
+# Grupowanie i liczenie 
+wyniki_access_high <- as.data.frame(table(uczniowie_access_high$Wynik_zasoby))
+colnames(wyniki_access_high) <- c("Wynik_zasoby", "Liczba_studentów")
+
+# Wykres słupkowy
+ggplot(wyniki_access_high, aes(x = Wynik_zasoby, y = Liczba_studentów)) +
+  geom_bar(stat = "identity", fill = "#f4511e", color = "black") +
+  geom_text(aes(label = Liczba_studentów), vjust = -0.5, size = 3) +  
+  labs(
+    title = "Rozkład wyników egzaminu dla uczniów z dużym dostępem do zasobów",
+    x = "Wyniki egzaminu",
+    y = "Liczba uczniów"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+    plot.title = element_text(size = 11)) + expand_limits(y = max(wyniki_access_high$Liczba_studentów) + 150)
+
+
+
+
+```
+
+Z wykresu wynika, że suma osób z wysokim dostępem do dodatkowych materiałów to 1898 i, że większość tych osób uzyskało wynik $(66,71]$. Zbadajmy teraz wyniki egzaminu osób ze średnim dostępem do dodatkowych materiałów.
+
+```{r}
+#| echo: false
+#| fig.width: 5.5
+#| fig.height: 3
+#| fig.align: center
+#| fig-cap: "Rozkład wyników egzaminu dla uczniów ze średnim dostępem do zasobów."
+# Tworzenie wykresu słupkowego dla wyników egzaminu dla uczniów ze średnim dostępem do zasobów
+
+# Odfiltrowanie uczniów z dostępem co najmniej "Medium" do zasobów
+uczniowie_access_medium <- dane[dane$`Dostęp do dodatkowych materiałów` == "Medium", ]
+
+# Dodanie kolumny z przedziałami wyników egzaminu
+uczniowie_access_medium$Wynik_zasoby <- cut(
+  uczniowie_access_medium$`Wynik egzaminu`,
+  breaks = seq(floor(min(uczniowie_access_medium$`Wynik egzaminu`, na.rm = TRUE)), 
+               ceiling(max(uczniowie_access_medium$`Wynik egzaminu`, na.rm = TRUE)), 
+               by = 5),
+  right = TRUE,  
+  include.lowest = TRUE
+)
+# Grupowanie i liczenie 
+wyniki_access_medium <- as.data.frame(table(uczniowie_access_medium$Wynik_zasoby))
+colnames(wyniki_access_medium) <- c("Wynik_zasoby", "Liczba_studentów")
+
+# Wykres słupkowy
+ggplot(wyniki_access_medium, aes(x = Wynik_zasoby, y = Liczba_studentów)) +
+  geom_bar(stat = "identity", fill = "#ff9100", color = "black") +
+  geom_text(aes(label = Liczba_studentów), vjust = -0.5, size = 3) +  
+  labs(
+    title = "Rozkład wyników egzaminu dla uczniów ze średnim dostępem do zasobów",
+    x = "Wyniki egzaminu",
+    y = "Liczba uczniów"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+    plot.title = element_text(size = 10)) + expand_limits(y = max(wyniki_access_medium$Liczba_studentów) + 200)
+```
+
+Z wykresu wynika, że suma osób ze średnim dostępem do dodatkowych materiałów to 3202 i, że większość tych osób uzyskało wynik $(63,68]$, czyli mniej niż w przypadku dużego dostępu. Zbadajmy teraz wyniki egzaminu osób z niskim dostępem do dodatkowych materiałów.
+
+```{r}
+#| echo: false
+#| fig.width: 5.5
+#| fig.height: 3
+#| fig.align: center
+#| fig-cap: "Rozkład wyników egzaminu dla uczniów z niskim dostępem do zasobów."
+# Tworzenie wykresu słupkowego dla wyników egzaminu dla uczniów z niskim dostępem do zasobów
+
+# Odfiltrowanie uczniów z "Low" dostępem do zasobów
+uczniowie_low_access <- dane[dane$`Dostęp do dodatkowych materiałów` == "Low", ]
+
+# Dodanie kolumny z przedziałami wyników egzaminu
+uczniowie_low_access$Wynik_zasoby <- cut(
+  uczniowie_low_access$`Wynik egzaminu`,
+  breaks = seq(floor(min(uczniowie_low_access$`Wynik egzaminu`, na.rm = TRUE)), 
+               ceiling(max(uczniowie_low_access$`Wynik egzaminu`, na.rm = TRUE)), 
+               by = 5),
+  right = TRUE,  
+  include.lowest = TRUE
+)
+# Grupowanie i liczenie 
+wyniki_low_access <- as.data.frame(table(uczniowie_low_access$Wynik_zasoby))
+colnames(wyniki_low_access) <- c("Wynik_zasoby", "Liczba_studentów")
+library(ggplot2)
+
+# Wykres słupkowy
+ggplot(wyniki_low_access, aes(x = Wynik_zasoby, y = Liczba_studentów)) +
+  geom_bar(stat = "identity", fill = "#ff8a65", color = "black") +
+  geom_text(aes(label = Liczba_studentów), vjust = -0.5, size = 3) +  
+  labs(
+    title = "Rozkład wyników egzaminu dla uczniów z niskim dostępem do zasobów",
+    x = "Wyniki egzaminu",
+    y = "Liczba uczniów"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+    plot.title = element_text(size = 11)) + expand_limits(y = max(wyniki_low_access$Liczba_studentów) + 100)
+```
+
+Z wykresu wynika, że suma osób z niskim dostępem do dodatkowych materiałów to 1273 i, że większość tych osób uzyskało wynik $(65,70]$, czyli podobnie jak dla uczniów z wysokim dostępem do materiałów dodatkowych.
+
+Zbadajmy teraz gęstości wszystkich tych przypadków:
+
+```{r}
+#| echo: false
+#| fig-cap: "Gęstość wyników egzaminu w zależności od dostępu do zasobów."
+# Tworzenie wykresu gęstości dla wyników egzaminu w zależności od dostępu do zasobów
+
+uczniowie_low_access <- dane[dane$`Dostęp do dodatkowych materiałów` == "Low", ]
+uczniowie_low_access$Group <- "Mały"
+uczniowie_access_medium <- dane[dane$`Dostęp do dodatkowych materiałów` ==("Medium"), ]
+uczniowie_access_medium$Group <- "Średni"
+uczniowie_high_access <- dane[dane$`Dostęp do dodatkowych materiałów` == "High", ]
+uczniowie_high_access$Group <- "Duży"
+dane_porownawcze <- rbind(uczniowie_low_access, uczniowie_access_medium, uczniowie_high_access)
+
+# Wykres gęstości
+ggplot(dane_porownawcze, aes(x = `Wynik egzaminu`, fill = Group)) +
+  geom_density(alpha = 0.5) +  
+  labs(
+    title = "Gęstość wyników egzaminu w zależności od dostępu do zasobów",
+    x = "Wyniki egzaminu",
+    y = "Gęstość",
+    fill = ""
+  ) +   scale_fill_manual(
+    values = c("Mały" = "#ff8a65",  
+               "Średni" = "#ff9100",
+               "Duży" = "red" )  
+  ) +
+  theme_minimal() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    legend.position = "top",
+    plot.title = element_text(size = 12)
+  )
+
+```
+
+Z wykresu wynika, że im większy dostęp do dodatkowych materiałów, tym gęstość koncentruje się bardziej po prawej stronie. Oznacza to, że im większą ilością materiałów dysponujemy, tym większa szansa na otrzymanie wyższego wyniku, a im większa dostępność, tym bardziej pozytywny wpływ na wynik egzaminu.
+
+Przeanalizujmy teraz wykres skrzypcowy dla wszystkich trzech grup:
+
+```{r}
+#| echo: false
+#| fig-cap: "Rozkład wyników egzaminu w zależności od dostępu do dodatkowych zasobów."
+# Tworzenie wykresu violin plot dla wyników egzaminu w zależności od dostępu do dodatkowych zasobów
+
+# Violin plot
+ggplot(dane_porownawcze, aes(x = Group, y = `Wynik egzaminu`, fill = Group)) +
+  geom_violin(trim = FALSE, alpha = 0.7) +
+  geom_boxplot(width = 0.1, position = position_dodge(0.9), outlier.shape = NA, color = "black") +
+  labs(
+    title = "Rozkład wyników egzaminu w zależności od dostępu do dodatkowych zasobów",
+    x = "Grupa",
+    y = "Wyniki egzaminu"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "none",
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    plot.title = element_text(size = 10)
+  ) +
+  scale_fill_manual(values = c( "#f4511e","#ff8a65","#ff9100" ))
+
+
+```
+
+Wysokości pudełek w każdej grupie są podobne co oznacza, że rozkład wyników dla $50\%$ uczniów w każdym wypadku jest podobny.
+
+Mediana w miarę zwiększania dostępu do dodatkowych źródeł się zwiększa, co wskazuje na wyższe wyniki dla uczniów ze średnim i wysokim dostępem do dodatkowych materiałów.
+
+Podsumowując, im większy dostęp do dodatkowych materiałów, tym lepszy wpływ na wynik końcowy.
+
+Z naszych wykresów wynika, że każda dodatkowa pomoc naukowa ma pozytywny wpływ na wynik końcowy egzaminu.
+
+Im więcej godzin korepetycji weźmiemy i im większy dostęp do materiałów dodatkowych, tym większa szansa na uzyskanie wyższego wyniku. Dostęp do internetu również korzystnie wpływa na wynik końcowy.
+
+**Kilka kategorii na raz**
+
+Wiemy już, że pojedyńcze wsparcie edukacyjne wpływa pozytywnie na wynik egzaminu. Sprawdźmy jednak jeszcze jak kilka jego kategorii na raz wpływa na efektywność uczniów na egzaminie.
+
+Za dodatkowe wsparcie edukacyjne przyjmijmy:
+
+-   przynajmniej jedną godzinę korepetycji
+
+-   dostęp do internetu
+
+-   przynajmniej średni dostęp do materiałów dodatkowych
+
+Wykres gęstości wyników egzaminu w zależności od ilości dodatkowych materiałów przedstawia się następująco:
+
+```{r}
+#| echo: false
+#| fig-cap: "Rozkład gęstości wyników egzaminu w zależności od wsparcia edukacyjnego."
+# Tworzenie wykresu gęstości dla wyników egzaminu w zależności od wsparcia edukacyjnego
+
+dane$Support_Count <- 
+  (dane$`Dostęp do internetu` == "Yes") +
+  (dane$`Godziny korepetycji` > 0) +
+  (dane$`Dostęp do dodatkowych materiałów` %in% c("Medium", "High"))
+
+# Tworzenie kategorii na podstawie liczby wsparć edukacyjnych
+dane$Support_Category <- factor(
+  ifelse(
+    dane$Support_Count == 0, "Brak wsparcia edukacyjnego", 
+    ifelse(
+      dane$Support_Count == 1, "1 wsparcie edukacyjne", 
+      ifelse(
+        dane$Support_Count == 2, "2 wsparcia edukacyjne", 
+        "Pełne wsparcie edukacyjne"
+      )
+    )
+  ),
+  levels = c("Brak wsparcia edukacyjnego", "1 wsparcie edukacyjne", "2 wsparcia edukacyjne", "Pełne wsparcie edukacyjne")
+)
+kolory4 <- c("Brak wsparcia edukacyjnego" = "#ff80ab", 
+             "1 wsparcie edukacyjne"= "#d81b60",
+             "2 wsparcia edukacyjne" = "#82073C",
+             "Pełne wsparcie edukacyjne" = "#871F78")
+
+
+# Wykres gęstości
+ggplot(dane, aes(x = `Wynik egzaminu`, color = Support_Category, fill = Support_Category)) +
+  geom_density(alpha = 0.3) +
+  labs(
+    title = "Rozkład gęstości wyników egzaminu w zależności od wsparcia edukacyjnego",
+    x = "Wynik egzaminu",
+    y = "Gęstość",
+    fill = "Kategoria wsparcia edukacyjnego",
+    color = "Kategoria wsparcia edukacyjnego"
+  ) +
+  theme_minimal() + 
+  scale_fill_manual(values = kolory4)+
+  scale_color_manual(values = kolory4) + theme(
+    plot.title = element_text(size = 10))
+```
+
+Z wykresu wynika, że im większe wsparcie edukacyjne, tym gęstość koncentruje się wokół wyższych wyników. Oznacza to, że im więcej wsparcia edukacyjnego dostajemy, tym większa szansa na otrzymanie wyższego wyniku.
+
+Przeanalizujmy teraz wykresy skrzypcowe każdego przypadku:
+
+```{r}
+#| echo: false
+#| fig-cap: "Rozkład wyników egzaminu w zależności od wsparcia edukacyjnego."
+# Tworzenie wykresu violin plot dla wyników egzaminu w zależności od wsparcia edukacyjnego
+
+# Violin plot
+ggplot(dane, aes(x = Support_Category, y = `Wynik egzaminu`, fill = Support_Category)) +
+  geom_violin(trim = FALSE, alpha = 0.7) +  
+  geom_boxplot(width = 0.1, position = position_dodge(0.9), outlier.shape = NA, color = "black") +  
+  labs(
+    title = "Rozkład wyników egzaminu w zależności od wsparcia edukacyjnego",
+    x = "Kategoria wsparcia edukacyjnego",
+    y = "Wynik egzaminu"
+  ) +
+  theme_minimal() +
+  theme(
+    legend.position = "none",  
+    axis.text.x = element_text(angle = 20, hjust = 0.5, size = 10, margin = margin(t = 5)),
+    plot.title = element_text(size = 11)  
+  ) +
+  scale_fill_manual(values = c("#ff80ab", "#d81b60", "#82073C", "#871F78"))  
+
+```
+
+Z wykresu wynika, że im większe wsparcie edukacyjne, tym większa mediana, a co za tym idzie - wyższe wyniki egzaminu. W przypadku braku wsparcia edukacyjnego wartości są najmniej rozproszone i nie ma wartości odstających.
+
+Podsumowując, większe wsparcie edukacyjne ma zauważalnie bardziej pozytywny wpływ na wynik egzaminu końcowego.
+
+# Podsumowanie
+
+Na podstawie przedstawionych statystyk i wykresów wybranego przez nas zbioru danych wynika, że zarówno czas poświęcony na naukę, frekwencja, jak i dostęp do dodatkowych materiałów edukacyjnych wpływa korzystnie na wynik egzaminu końcowego.
+
+Z naszych analiz wynika, że liczba godzin pozytywnie koreluje z wynikami egzaminów. Im więcej czasu uczniowie poświęcają na naukę, tym wyższe wyniki osiągają. Zależność ta została potwierdzona za pomocą modelu regresji liniowej, który wskazał wzrost wyniku o $0.29$ punktu za każdą dodatkową godzinę nauki.
+
+Obecność na zajęciach również ma silny wpływ na wyniki egzaminów. Uczniowie z wyższą frekwencją osiągają lepsze wyniki w porównaniu do uczniów mniej uczęszczających na zajęcia. Ta relacja również została potwierdzona za pomocą modelu regresji liniowej, który wskazał wzrost wyniku o $0.2$ punktu za każdy dodatkowy punk procentowy obecności.
+
+Uczniowie korzystający z internetu, korepetycji i ci z większym dostępem do materiałów edukacyjnych również osiągali wyższe wyniki w porównaniu do uczniów, którzy nie mieli takowego wsparcia. Dodatkowo, kombinacja kilku rodzajów wsparcia edukacyjnego prowadziła do najwyższych wyników egzaminacyjnych.
+
+Wyniki sugerują, że zadbanie o wysoką frekwencję, dobrą organizację czasu nauki oraz zapewnienie dostępu do różnorodnych materiałów edukacyjnych może prowadzić do lepszych wyników uczniów. Warto promować te czynniki jako elementy wspierające sukces w szkole. Większa świadomość rodziców, nauczycieli i uczniów na ten temat może skutkować znaczną poprawą wyników egzaminacyjnych.
